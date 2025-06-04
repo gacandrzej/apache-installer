@@ -49,7 +49,8 @@ RUN wget --no-check-certificate ${APACHE_URL} && \
 
 # Weryfikacja sum kontrolnych i import klucza GPG
 RUN sha256sum -c ${APACHE_TARBALL}.sha256 || exit 1
-RUN gpg --keyserver keyserver.ubuntu.com --recv-keys ${APACHE_GPG_KEY_ID} --batch --yes || exit 1
+# Używamy hkps.pool.sks-keyservers.net jako bardziej stabilnego serwera kluczy i usuwamy niepotrzebne opcje
+RUN gpg --keyserver hkps.pool.sks-keyservers.net --recv-keys ${APACHE_GPG_KEY_ID} || exit 1
 RUN gpg --verify ${APACHE_TARBALL}.asc ${APACHE_TARBALL} || exit 1
 
 # Rozpakowanie i kompilacja Apache'a
