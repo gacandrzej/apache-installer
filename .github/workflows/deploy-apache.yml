@@ -1,0 +1,67 @@
+name: Budowanie i Wdrażanie Obrazu Apache Docker
+
+on:
+  push:
+    branches:
+      - main # Uruchamia ten workflow automatycznie przy każdym pushu do gałęzi 'main'
+  workflow_dispatch: # Dodaje opcję ręcznego uruchomienia workflow z interfejsu GitHub
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest # Wybiera system operacyjny dla runnera (wirtualnej maszyny), na której będzie działać workflow.
+                            # 'ubuntu-latest' ma preinstalowanego Dockera, co jest wygodne.
+
+    steps:
+      - name: Sklonowanie repozytorium # Krok 1: Pobiera kod z Twojego repozytorium GitHub na runnera.
+        uses: actions/checkout@v4
+
+      - name: Nadanie uprawnień do wykonywania skryptowi install.sh # Krok 2: Upewnia się, że główny skrypt 'install.sh'
+                                                                    # ma uprawnienia do uruchomienia.
+        run: chmod +x ./install.sh
+
+      - name: Uruchomienie skryptu wdrożeniowego Apache Docker # Krok 3: Wywołuje Twój główny skrypt 'install.sh'.
+                                                               # Ten skrypt zbuduje obraz Docker, przygotuje katalogi
+                                                               # na hoście i uruchomi kontener Apache.
+        run: sudo ./install.sh # Używamy 'sudo', ponieważ skrypt 'install.sh' wykonuje komendy Docker, które tego wymagają.
+        shell: bash # Określa, że skrypt ma być uruchomiony za pomocą bash.
+        # timeout-minutes: 10 # Opcjonalnie: Ustawia maksymalny czas wykonania tego kroku na 10 minut.
+                              # Przydatne, jeśli kompilacja Apache'a jest czasochłonna.
+
+      - name: Weryfikacja działania kontenera Docker # Krok 4: Zestaw komend do sprawdzenia, czy kontener został
+                                                    # poprawnie uruchomiony i czy Apache w nim działa.
+        run: |
+          echo "Lista wszystkich kontenerów Docker:"
+          sudo docker ps -a
+
+          echo "Pobieranie ostatnich 50 linii logów z kontenera Apache:"
+          sudo docker logs my-apache-container | head -n 50 # Ogranicza wyjście logów, aby nie zaśmiecać konsoli Actions.
+
+          # Testowanie dostępu HTTP wewnątrz kontenera (nie z zewnątrz runnera).
+          # Pamiętaj, że ten kontener jest tymczasowy i nie jest dostępny publicznie z internetu.
+          echo "Testowanie dostępu HTTP wewnątrz kontenera..."
+          # '|| true' pozwala na kontynuowanie workflow, nawet jeśli curl zwróci błąd (np. brak odpowiedzi).
+          sudo docker exec my-apache-container curl -s -o /dev/null -w "Kod HTTP: %{http_code}\n" http://localhost:80/ || true
+
+          # Testowanie dostępu HTTPS wewnątrz kontenera (ignorując samo-podpisany certyfikat).
+          echo "Testowanie dostępu HTTPS wewnątrz kontenera (ignorowanie certyfikatu)..."
+          sudo docker exec my-apache-container curl -sk -o /dev/null -w "Kod HTTPS: %{http_code}\n" https://localhost:443/ || true
+
+          # Sprawdzenie, czy proces httpd (Apache) działa w kontenerze.
+          echo "Sprawdzanie, czy proces Apache httpd działa w kontenerze..."
+          # Szukamy procesów 'httpd' i filtrujemy 'grep -v grep', aby nie pokazać samego grepa.
+          # Następnie sprawdzamy status wyjścia, aby wyświetlić odpowiedni komunikat.
+          sudo docker exec my-apache-container ps aux | grep httpd | grep -v grep && echo "Proces Apache httpd znaleziony!" || echo "Proces Apache httpd NIE znaleziony!"
+
+        continue-on-error: true # Ten krok będzie kontynuowany nawet, jeśli niektóre z weryfikacji zawiodą.
+                                # Przydatne do debugowania.
+
+      - name: Czyszczenie kontenerów i obrazów Docker # Krok 5: Ważne jest, aby posprzątać zasoby po zakończeniu testów.
+                                                   # Runner GitHub Actions jest tymczasowy, ale dobra praktyka wymaga czyszczenia.
+        if: always() # Ten krok zostanie uruchomiony ZAWSZE, niezależnie od tego, czy poprzednie kroki zakończyły się sukcesem, czy błędem.
+        run: |
+          echo "Zatrzymywanie i usuwanie kontenera Apache..."
+          sudo docker stop my-apache-container || true # '|| true' zapobiega zatrzymaniu workflow, jeśli kontener już nie istnieje.
+          sudo docker rm my-apache-container || true
+          echo "Usuwanie obrazu Docker Apache..."
+          sudo docker rmi my-apache-ssl || true
+          echo "Czyszczenie zakończone."
