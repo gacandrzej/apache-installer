@@ -4,7 +4,7 @@ IMAGE_NAME="my-apache-ssl"
 CONTAINER_NAME="my-apache-container"
 COMMON_NAME="zsmeie"
 APACHE_HOME_CONTAINER="/usr/local/apache2" # Ścieżka Apache w kontenerze
-APACHE_USER_CONTAINER="apacheuser" # Użytkownik Apache'a w kontenerze
+APACHE_USER_CONTAINER="www-data" # Użytkownik Apache'a w kontenerze
 
 # Katalogi na hoście, które będą montowane
 HOST_APACHE_DATA_DIR="${HOME}/apache_data"

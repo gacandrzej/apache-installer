@@ -1,8 +1,8 @@
 #!/bin/bash
 
 APACHE_HOME="/usr/local/apache2"
-APACHE_USER="apacheuser"
-APACHE_GROUP="apachegroup"
+APACHE_USER="www-data"
+APACHE_GROUP="www-data"
 
 log_info() {
     echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') $1"

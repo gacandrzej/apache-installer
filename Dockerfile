@@ -3,8 +3,8 @@ FROM ubuntu:22.04
 
 # Ustawiamy zmienne środowiskowe
 ENV DEBIAN_FRONTEND=noninteractive
-ENV APACHE_USER apacheuser
-ENV APACHE_GROUP apachegroup
+ENV APACHE_USER www-data
+ENV APACHE_GROUP www-data
 ENV APACHE_HOME /usr/local/apache2
 ENV APACHE_VERSION 2.4.63
 ENV APACHE_TARBALL httpd-${APACHE_VERSION}.tar.bz2
