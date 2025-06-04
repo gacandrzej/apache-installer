@@ -94,9 +94,9 @@ sed -i 's|^LockFile "logs/accept.lock"|LockFile "/tmp/accept.lock"|' "${HTTPD_CO
 sudo docker run -d --name "${CONTAINER_NAME}" \
     -p 80:80 \
     -v "${HOST_CONF_DIR}":"/usr/local/apache2/conf:ro" \
-   # -v "${HOST_HTDOCS_DIR}":"/usr/local/apache2/htdocs" \
-   # -v "${HOST_LOGS_DIR}":"/usr/local/apache2/logs" \
-   # -v "${HOST_PUBLIC_HTML_MAREK_DIR}":"/home/${USER_MAREK}/public_html" \
+   # -v "${HOST_HTDOCS_DIR}":"/usr/local/apache2/htdocs"
+   # -v "${HOST_LOGS_DIR}":"/usr/local/apache2/logs"
+   # -v "${HOST_PUBLIC_HTML_MAREK_DIR}":"/home/${USER_MAREK}/public_html"
     "${IMAGE_NAME}" || log_error "Nie udało się uruchomić kontenera '${CONTAINER_NAME}'."
 
 
