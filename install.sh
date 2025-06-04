@@ -53,6 +53,12 @@ mkdir -p "${HOST_HTDOCS_DIR}" || log_error "Nie udało się utworzyć ${HOST_HTD
 mkdir -p "${HOST_PUBLIC_HTML_DIR}" || log_error "Nie udało się utworzyć ${HOST_PUBLIC_HTML_DIR}."
 mkdir -p "${HOST_LOGS_DIR}" || log_error "Nie udało się utworzyć ${HOST_LOGS_DIR}."
 mkdir -p "${HOST_CONF_DIR}/extra" || log_error "Nie udało się utworzyć ${HOST_CONF_DIR}/extra." # Tworzymy też podkatalog extra
+HOST_PUBLIC_HTML_MAREK_DIR="${HOST_APACHE_DATA_DIR}/public_html_marek"
+mkdir -p "${HOST_PUBLIC_HTML_MAREK_DIR}" || log_error "Nie udało się utworzyć ${HOST_PUBLIC_HTML_MAREK_DIR}."
+
+# Przykład: Plik index.html dla Marka
+echo "<html><body><h1>Witaj na stronie Marka (public_html)!</h1></body></html>" > "${HOST_PUBLIC_HTML_MAREK_DIR}/index.html"
+
 # --- Tworzenie katalogu SSL i generowanie certyfikatów na hoście ---
 HOST_SSL_DIR="${HOST_CONF_DIR}/ssl" # Definiujemy katalog SSL na hoście
 
@@ -78,18 +84,7 @@ sudo chmod 755 "${HOST_APACHE_DATA_DIR}" "${HOST_HTDOCS_DIR}" "${HOST_PUBLIC_HTM
 
 # Ustawienie właściciela katalogów dla Apache'a - ważne, aby użytkownik Apache'a w kontenerze mógł zapisywać logi
 # I aby mieć prawa do public_html
-# Znajdź UID/GID użytkownika APACHE_USER w kontenerze
-# Należy pamiętać, że `docker run` tworzy nowego użytkownika `apacheuser` o ID, które może być różne od UID/GID na hoście.
-# Najbezpieczniej jest, aby użytkownik, pod którym działa proces w kontenerze, miał odpowiednie uprawnienia do zamontowanego katalogu.
-# Domyślnie, jeśli proces w kontenerze działa jako `root`, to ma pełny dostęp.
-# Ale ponieważ stworzyliśmy `apacheuser`, musimy upewnić się, że to działa.
-# Najprościej:
-# chown -R 33:33 /var/www/html (dla Debiana/Ubuntu domyślny www-data)
-# ale tutaj nie możemy wiedzieć, jakie ID ma apacheuser w kontenerze.
-# Rozwiązaniem jest użycie nazwy użytkownika w chown po zamontowaniu, tak jak w entrypoint.sh.
-# Na hoście uprawnienia mogą pozostać dla bieżącego użytkownika (czyli tego, który uruchamia skrypt)
-# lub nadać wszystkim grupie dostęp do zapisu (np. 775 i dodać użytkownika apache do grupy).
-# Na potrzeby tego skryptu edukacyjnego, zakładamy, że `entrypoint.sh` poradzi sobie z uprawnieniami w kontenerze.
+
 
 log_info "Tworzenie przykładowych plików index.html w katalogach danych na hoście..."
 echo "<html><body><h1>Witaj na glownej stronie (htdocs) hostowanej przez Docker!</h1></body></html>" > "${HOST_HTDOCS_DIR}/index.html"
@@ -155,9 +150,12 @@ if [ ! -f "${HOST_CONF_DIR}/httpd.conf" ]; then
 
     # Edytuj plik httpd-userdir.conf na hoście
     USERDIR_CONF_FILE_HOST="${HOST_CONF_DIR}/extra/httpd-userdir.conf"
-    sed -i 's/^UserDir public_html/UserDir public_html/' "${USERDIR_CONF_FILE_HOST}"
-    sed -i '/<Directory "\/home\/user\/public_html">/,/<\/Directory>/s|Require all denied|Require all granted|' "${USERDIR_CONF_FILE_HOST}"
-    sed -i '/<Directory "\/home\/user\/public_html">/,/<\/Directory>/s|AllowOverride None|AllowOverride All|' "${USERDIR_CONF_FILE_HOST}"
+    # Ustaw UserDir na standardową ścieżkę kontenera
+    sed -i 's|^UserDir.*|UserDir "/home/"*' "${USERDIR_CONF_FILE_HOST}"
+    # Zmieniamy domyślne <Directory> na bardziej ogólne, aby pasowało do /home/marek/public_html
+    # Może być konieczne dostosowanie lub dodanie nowego bloku Directory dla /home/*
+    sed -i '/<Directory ".*">/,/<\/Directory>/s|Require all denied|Require all granted|' "${USERDIR_CONF_FILE_HOST}"
+    sed -i '/<Directory ".*">/,/<\/Directory>/s|AllowOverride None|AllowOverride All|' "${USERDIR_CONF_FILE_HOST}"
 
     log_info "Domyślne pliki konfiguracyjne zostały skopiowane i zmodyfikowane na hoście."
     sudo docker stop "${TMP_CONTAINER_NAME}" &> /dev/null # Zatrzymaj i usuń tymczasowy kontener

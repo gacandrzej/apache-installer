@@ -3,6 +3,7 @@ set -ex
 APACHE_HOME="/usr/local/apache2"
 APACHE_USER="www-data"
 APACHE_GROUP="www-data"
+USER_MAREK="marek"
 
 log_info() {
     echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') $1"
@@ -34,16 +35,18 @@ chmod 600 ${APACHE_HOME}/conf/ssl/server.key
 chown -R ${APACHE_USER}:${APACHE_GROUP} ${APACHE_HOME}/htdocs || log_error "Nie udało się zmienić właściciela dla ${APACHE_HOME}/htdocs."
 chmod -R 755 ${APACHE_HOME}/htdocs || log_error "Nie udało się zmienić uprawnień dla ${APACHE_HOME}/htdocs."
 
-# public_html: katalog dla stron użytkowników (w katalogu domowym apacheuser)
-# Upewnij się, że katalog domowy apacheuser istnieje i ma odpowiednie uprawnienia
-mkdir -p /home/${APACHE_USER} # Upewnienie się, że katalog bazowy istnieje
-chown ${APACHE_USER}:${APACHE_GROUP} /home/${APACHE_USER} || log_error "Nie udało się zmienić właściciela dla /home/${APACHE_USER}."
 chmod 751 /home/${APACHE_USER} # R-X dla innych (Apache potrzebuje wejścia)
 
-mkdir -p /home/${APACHE_USER}/public_html # Upewnienie się, że katalog public_html istnieje
-chown -R ${APACHE_USER}:${APACHE_GROUP} /home/${APACHE_USER}/public_html || log_error "Nie udało się zmienić właściciela dla /home/${APACHE_USER}/public_html."
-chmod -R 755 /home/${APACHE_USER}/public_html || log_error "Nie udało się zmienić uprawnień dla /home/${APACHE_USER}/public_html."
-
+# Uprawnienia dla katalogu domowego Marka (będzie zamontowany)
+# Ważne: Jeśli /home/marek nie będzie montowany, ale tylko /home/marek/public_html,
+# to entrypoint powinien tylko zajmować się /home/marek/public_html.
+# Jeśli montujesz całe /home/marek, to dostosuj:
+if [ -d "/home/${USER_MAREK}/public_html" ]; then
+    chown -R ${USER_MAREK}:${USER_MAREK} /home/${USER_MAREK}/public_html
+    chmod -R 755 /home/${USER_MAREK}/public_html
+else
+    log_info "Katalog public_html dla ${USER_MAREK} nie został znaleziony (może nie jest zamontowany). Pomijam ustawianie uprawnień."
+fi
 # logs: katalog logów Apache'a
 chown -R ${APACHE_USER}:${APACHE_GROUP} ${APACHE_HOME}/logs || log_error "Nie udało się zmienić właściciela dla ${APACHE_HOME}/logs."
 chmod -R 755 ${APACHE_HOME}/logs || log_error "Nie udało się zmienić uprawnień dla ${APACHE_HOME}/logs."
@@ -56,6 +59,14 @@ log_info "Testowanie konfiguracji Apache'a..."
 ${APACHE_HOME}/bin/apachectl configtest || log_error "Błąd konfiguracji Apache'a. Sprawdź logi."
 log_info "Konfiguracja Apache'a poprawna (Syntax OK)."
 
+# Upewnij się, że ServerName jest ustawiony w httpd.conf, aby uniknąć ostrzeżeń
+APACHE_CONF_FILE="${APACHE_HOME}/conf/httpd.conf"
+if ! grep -q "ServerName" "${APACHE_CONF_FILE}"; then
+    echo "ServerName localhost" >> "${APACHE_CONF_FILE}"
+else
+    sed -i 's/^#*ServerName .*/ServerName localhost/' "${APACHE_CONF_FILE}"
+fi
+
 # Sprawdzenie, czy moduł SSL został załadowany
 log_info "Sprawdzanie, czy moduł SSL został załadowany..."
 if ! ${APACHE_HOME}/bin/apachectl -M | grep -q "ssl_module (shared)"; then
@@ -66,4 +77,4 @@ log_info "Moduł SSL (ssl_module) jest załadowany."
 log_info "Entrypoint wykonany. Uruchamiam Apache'a na pierwszym planie..."
 
 # Uruchomienie Apache'a na pierwszym planie
-exec ${APACHE_HOME}/bin/httpd -DFOREGROUND
+exec ${APACHE_HOME}/bin/httpd -DFOREGROUND "$@" || { echo "Apache failed to start. Check command/config." && exit 1; }

@@ -34,6 +34,19 @@ RUN apt update && \
         net-tools && \
     rm -rf /var/lib/apt/lists/*
 
+# Dodawanie użytkownika 'marek' i ustawienie jego katalogu domowego
+# Używamy -m (tworzy katalog domowy) i -d (określa ścieżkę)
+# -N oznacza, że nie tworzymy dedykowanej grupy 'marek'. Użytkownik zostanie dodany do grupy domyślnej.
+# -G www-data: Dodajemy 'marek' do grupy 'www-data', aby Apache (działający jako www-data) miał dostęp do plików.
+# -s /bin/bash: Domyślna powłoka (przydatne do debugowania).
+RUN useradd -r -N -m -d /home/marek -G www-data -s /bin/bash marek && \
+    mkdir -p /home/marek/public_html && \
+    chown -R marek:www-data /home/marek && \
+    chmod -R 755 /home/marek/public_html
+
+# Opcjonalnie: Ustawienie domyślnej zawartości dla public_html Marka
+COPY ./public_html_marek_default/ /home/marek/public_html/
+
 # Tworzenie katalogów Apache (bez htdocs, public_html, conf, logs, bo będą montowane)
 # Pozostawiamy conf/ssl, bo certyfikaty są generowane w obrazie
 RUN mkdir -p ${APACHE_HOME}/conf/ssl
