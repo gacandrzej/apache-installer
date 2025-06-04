@@ -1,7 +1,7 @@
 #!/bin/bash
 
 APACHE_HOME="/usr/local/apache2"
-APACHE_USER="apacheuser" # Użytkownik, pod którym działa Apache
+APACHE_USER="apacheuser"
 
 log_info() {
     echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') $1"
@@ -26,12 +26,24 @@ if ! ${APACHE_HOME}/bin/apachectl -M | grep -q "ssl_module (shared)"; then
 fi
 log_info "Moduł SSL (ssl_module) jest załadowany."
 
-log_info "Sprawdzanie, czy Apache nasłuchuje na porcie 443..."
-# Pamiętaj, że w kontenerze ss -tulnp | grep 443 może nie pokazać httpd dopóki httpd się nie uruchomi
-# Ale możemy sprawdzić, czy port jest otwarty w sieci
-# Uruchomimy apachectl na pierwszym planie, który sam sprawdzi bindowanie
+# Ustawienie uprawnień dla katalogów montowanych (na wypadek, gdyby host nie ustawił ich idealnie)
+# Te komendy upewniają się, że użytkownik Apache'a ma prawa do odczytu i zapisu w tych katalogach.
+log_info "Ustawianie uprawnień dla katalogów htdocs i public_html w kontenerze..."
+chown -R ${APACHE_USER}:${APACHE_GROUP} ${APACHE_HOME}/htdocs || log_error "Nie udało się zmienić właściciela dla ${APACHE_HOME}/htdocs."
+chmod -R 755 ${APACHE_HOME}/htdocs || log_error "Nie udało się zmienić uprawnień dla ${APACHE_HOME}/htdocs."
+
+# Katalog domowy użytkownika Apache'a
+mkdir -p /home/${APACHE_USER} # Upewnienie się, że istnieje, jeśli nie jest montowany
+chown ${APACHE_USER}:${APACHE_GROUP} /home/${APACHE_USER}
+chmod 751 /home/${APACHE_USER} # Uprawnienia dla katalogu domowego
+
+# public_html w katalogu domowym użytkownika Apache'a
+mkdir -p /home/${APACHE_USER}/public_html # Upewnienie się, że istnieje
+chown -R ${APACHE_USER}:${APACHE_GROUP} /home/${APACHE_USER}/public_html
+chmod -R 755 /home/${APACHE_USER}/public_html
+
+
 log_info "Entrypoint wykonany. Uruchamiam Apache'a na pierwszym planie..."
 
 # Uruchomienie Apache'a na pierwszym planie
-# exec zastępuje proces shella, dzięki czemu sygnały są przekazywane bezpośrednio do httpd
 exec ${APACHE_HOME}/bin/httpd -DFOREGROUND
