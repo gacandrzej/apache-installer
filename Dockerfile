@@ -9,8 +9,8 @@ ENV APACHE_HOME /usr/local/apache2
 ENV APACHE_VERSION 2.4.63
 ENV APACHE_TARBALL httpd-${APACHE_VERSION}.tar.bz2
 ENV APACHE_URL https://downloads.apache.org/httpd/${APACHE_TARBALL}
-ENV APACHE_ASC_URL https://downloads.apache.org/httpd/${APACHE_VERSION}/${APACHE_TARBALL}.asc
-ENV APACHE_SHA256_URL https://downloads.apache.org/httpd/${APACHE_VERSION}/${APACHE_TARBALL}.sha256
+ENV APACHE_ASC_URL https://downloads.apache.org/httpd/${APACHE_TARBALL}.asc
+ENV APACHE_SHA256_URL https://downloads.apache.org/httpd/${APACHE_TARBALL}.sha256
 ENV APACHE_GPG_KEY_ID E33D83D62932EDEF
 ENV COMMON_NAME zsmeie
 
