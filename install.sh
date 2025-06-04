@@ -184,7 +184,7 @@ log_info "Kontener '${CONTAINER_NAME}' uruchomiony w tle z woluminami."
 
 # Wyświetlanie logów kontenera w czasie rzeczywistym
 #log_info "Wyświetlam logi kontenera (Ctrl+C, aby zakończyć śledzenie logów i pozostawić kontener uruchomiony):"
-#sudo docker logs -f "${CONTAINER_NAME}"
+sudo docker logs "${CONTAINER_NAME}"
 # Po prostu kontynuuj po uruchomieniu kontenera
 log_info "Kontener '${CONTAINER_NAME}' uruchomiony w tle z woluminami."
 
