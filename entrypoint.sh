@@ -61,6 +61,7 @@ log_info "Testowanie konfiguracji Apache'a..."
 APACHECTL_OUTPUT=$(/usr/local/apache2/bin/apachectl configtest 2>&1)
 APACHECTL_EXIT_CODE=$? # Przechwyć kod wyjścia ostatniego polecenia
 
+
 if [ ${APACHECTL_EXIT_CODE} -ne 0 ]; then
     echo "ERROR: Apache configtest failed with exit code ${APACHECTL_EXIT_CODE}."
     echo "--- Apache configtest output ---"

@@ -5,6 +5,7 @@ CONTAINER_NAME="my-apache-container"
 COMMON_NAME="zsmeie"
 APACHE_HOME_CONTAINER="/usr/local/apache2" # Ścieżka Apache w kontenerze
 APACHE_USER_CONTAINER="www-data" # Użytkownik Apache'a w kontenerze
+USER_MAREK="marek"
 
 # Katalogi na hoście, które będą montowane
 HOST_APACHE_DATA_DIR="${HOME}/apache_data"
@@ -176,17 +177,12 @@ sudo docker run -d \
     -p 80:80 \
     -p 443:443 \
     -v "${HOST_HTDOCS_DIR}":"${APACHE_HOME_CONTAINER}/htdocs" \
-    -v "${HOST_PUBLIC_HTML_DIR}":"/home/${APACHE_USER_CONTAINER}/public_html" \
+    -v "${HOST_PUBLIC_HTML_DIR}":"/home/${USER_MAREK}/public_html" \
     -v "${HOST_LOGS_DIR}":"${APACHE_HOME_CONTAINER}/logs" \
     -v "${HOST_CONF_DIR}":"${APACHE_HOME_CONTAINER}/conf" \
     --name "${CONTAINER_NAME}" \
     "${IMAGE_NAME}" || log_error "Nie udało się uruchomić kontenera Dockera."
 
-log_info "Kontener '${CONTAINER_NAME}' uruchomiony w tle z woluminami."
-
-# Wyświetlanie logów kontenera w czasie rzeczywistym
-#log_info "Wyświetlam logi kontenera (Ctrl+C, aby zakończyć śledzenie logów i pozostawić kontener uruchomiony):"
-sudo docker logs "${CONTAINER_NAME}"
 # Po prostu kontynuuj po uruchomieniu kontenera
 log_info "Kontener '${CONTAINER_NAME}' uruchomiony w tle z woluminami."
 
@@ -200,11 +196,11 @@ if sudo docker ps -q | grep -q "${CONTAINER_NAME}"; then
 else
     log_error "Kontener '${CONTAINER_NAME}' nie działa po uruchomieniu. Pokażę jego logi przed zakończeniem:"
     # Jeśli kontener nie działa, koniecznie pokaż logi błędu!
-    sudo docker logs "${CONTAINER_NAME}"
+    sudo docker logs --details "${CONTAINER_NAME}"
     exit 1 # Koniec działania skryptu z błędem
 fi
 
-# ... (dalej w skrypcie)
+
 # Jeśli masz dalsze testy HTTP/HTTPS, możesz je teraz uruchomić:
 log_info "Testowanie dostępu HTTP wewnątrz kontenera..."
 # Przykładowy test:
