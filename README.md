@@ -30,3 +30,4 @@ a zmiany będą od razu widoczne w działającym kontenerze, bez potrzeby jego p
    aby zmiany weszły w życie, bez długiej przebudowy obrazu.
    
 7. Trwałe logi: Logi Apache'a (access_log, error_log, ssl_request_log) są również montowane do ~/apache_data/logs, co oznacza, że są trwałe i łatwo dostępne z hosta.
+8. Dodanie workflow.
