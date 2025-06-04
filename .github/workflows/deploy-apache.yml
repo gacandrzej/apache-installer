@@ -27,6 +27,10 @@ jobs:
 
     - name: Weryfikacja działania usług Docker Compose
       run: |
+      
+        echo "Testowanie dostępu HTTPS (curl z hosta):"
+        curl -k -s -o /dev/null -w "HTTP Code HTTPS: %{http_code}\n" https://localhost:443/ || true
+        # ^ -k (insecure) jest potrzebne dla samopodpisanego certyfikatu
         echo "Lista wszystkich usług Docker Compose:"
         sudo docker compose ps
         echo "Pobieranie logów z usługi Apache:"

@@ -82,11 +82,11 @@ else
 fi
 
 # Sprawdzenie, czy moduł SSL został załadowany
-#log_info "Sprawdzanie, czy moduł SSL został załadowany..."
-#if ! ${APACHE_HOME}/bin/apachectl -M | grep -q "ssl_module (shared)"; then
-#    log_error "Moduł SSL (ssl_module) nie został załadowany poprawnie. Sprawdź logi błędów Apache'a."
-#fi
-#log_info "Moduł SSL (ssl_module) jest załadowany."
+log_info "Sprawdzanie, czy moduł SSL został załadowany..."
+if ! ${APACHE_HOME}/bin/apachectl -M | grep -q "ssl_module (shared)"; then
+    log_error "Moduł SSL (ssl_module) nie został załadowany poprawnie. Sprawdź logi błędów Apache'a."
+fi
+log_info "Moduł SSL (ssl_module) jest załadowany."
 
 log_info "Entrypoint wykonany. Uruchamiam Apache'a na pierwszym planie..."
 

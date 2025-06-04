@@ -47,10 +47,14 @@ else
     sed -i 's/^#*ServerName .*/ServerName localhost/' "${HTTPD_CONF_FILE_HOST}"
 fi
 
-# WYŁĄCZANIE SSL
-sed -i 's/^Include conf\/extra\/httpd-ssl.conf/#Include conf\/extra\/httpd-ssl.conf/' "${HTTPD_CONF_FILE_HOST}"
-sed -i 's/LoadModule ssl_module/#LoadModule ssl_module/' "${HTTPD_CONF_FILE_HOST}"
-sed -i 's/Listen 443/#Listen 443/' "${HTTPD_CONF_FILE_HOST}"
+# Odkomentuj moduł SSL
+sed -i 's/^#\(LoadModule ssl_module\)/\1/' "${HTTPD_CONF_FILE_HOST}"
+
+# Odkomentuj Listen 443
+sed -i 's/^#\(Listen 443\)/\1/' "${HTTPD_CONF_FILE_HOST}"
+
+# Odkomentuj include httpd-ssl.conf
+sed -i 's/^#\(Include conf\/extra\/httpd-ssl.conf\)/\1/' "${HTTPD_CONF_FILE_HOST}"
 
 # WYŁĄCZANIE UserDir
 sed -i 's/^Include conf\/extra\/httpd-userdir.conf/#Include conf\/extra\/httpd-userdir.conf/' "${HTTPD_CONF_FILE_HOST}"

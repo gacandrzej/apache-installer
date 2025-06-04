@@ -7,14 +7,15 @@ services:
     container_name: my-apache-container # Nazwa kontenera
     ports:
       - "80:80" # Mapowanie portów: HOST:CONTAINER
+      - "443:443"
     volumes:
       # Pamiętaj, że w Compose ścieżki po lewej stronie są RELATYWNE do miejsca, gdzie jest docker-compose.yml
       # Czyli `./apache_data/conf` odnosi się do `your-repo/apache_data/conf`
       - ./apache_data/conf:/usr/local/apache2/conf
-      # Poniższe woluminy są zakomentowane do celów debugowania (zgodnie z wcześniejszymi ustaleniami)
-      # - ./apache_data/htdocs:/usr/local/apache2/htdocs
-      # - ./apache_data/logs:/usr/local/apache2/logs
-      # - ./apache_data/public_html_marek:/home/marek/public_html
+      - ./apache_data/htdocs:/usr/local/apache2/htdocs
+      - ./apache_data/logs:/usr/local/apache2/logs
+      - ./apache_data/ssl:/usr/local/apache2/conf/ssl
+      #- ./apache_data/public_html_marek:/home/marek/public_html
     environment: # Zmienne środowiskowe dla kontenera, jeśli potrzebne
       - APACHE_RUN_USER=www-data
       - APACHE_RUN_GROUP=www-data
