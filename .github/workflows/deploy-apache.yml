@@ -14,6 +14,11 @@ jobs:
     steps:
       - name: Sklonowanie repozytorium # Krok 1: Pobiera kod z Twojego repozytorium GitHub na runnera.
         uses: actions/checkout@v4
+        
+      - name: Zbuduj obraz Dockera
+      
+        run: docker build -t my-apache-ssl .
+        
 
       - name: Nadanie uprawnień do wykonywania skryptowi install.sh # Krok 2: Upewnia się, że główny skrypt 'install.sh'
                                                                     # ma uprawnienia do uruchomienia.
