@@ -191,9 +191,15 @@ log_info "Kontener '${CONTAINER_NAME}' uruchomiony w tle z woluminami."
 # Jeśli chcesz sprawdzić status kontenera, możesz dodać krótkie sprawdzenie:
 sleep 5 # Daj Apache'owi chwilę na start
 if sudo docker ps -q | grep -q "${CONTAINER_NAME}"; then
-    log_info "Kontener '${CONTAINER_NAME}' działa."
+    log_info "Kontener '${CONTAINER_NAME}' działa. Pokażę jego logi:"
+    # TUTAJ JEST WAŻNA ZMIANA:
+    # Pobierz logi kontenera i wyświetl je. Możesz ograniczyć liczbę linii.
+    sudo docker logs --tail 100 "${CONTAINER_NAME}"
 else
-    log_error "Kontener '${CONTAINER_NAME}' nie działa po uruchomieniu. Sprawdź logi ręcznie: sudo docker logs ${CONTAINER_NAME}"
+    log_error "Kontener '${CONTAINER_NAME}' nie działa po uruchomieniu. Pokażę jego logi przed zakończeniem:"
+    # Jeśli kontener nie działa, koniecznie pokaż logi błędu!
+    sudo docker logs "${CONTAINER_NAME}"
+    exit 1 # Koniec działania skryptu z błędem
 fi
 
 # ... (dalej w skrypcie)
