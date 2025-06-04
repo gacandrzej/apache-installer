@@ -34,9 +34,9 @@ RUN apt update && \
         net-tools && \
     rm -rf /var/lib/apt/lists/*
 
-# Tworzenie katalogów Apache (bez htdocs i public_html, bo będą montowane)
-RUN mkdir -p ${APACHE_HOME}/conf/ssl && \
-    mkdir -p ${APACHE_HOME}/logs
+# Tworzenie katalogów Apache (bez htdocs, public_html, conf, logs, bo będą montowane)
+# Pozostawiamy conf/ssl, bo certyfikaty są generowane w obrazie
+RUN mkdir -p ${APACHE_HOME}/conf/ssl
 
 # Tworzenie dedykowanej grupy i użytkownika dla Apache'a
 RUN groupadd ${APACHE_GROUP} && \
@@ -67,35 +67,17 @@ RUN tar xjf ${APACHE_TARBALL} && \
     make -j$(nproc) && \
     make install
 
-# Generowanie samodzielnie podpisanego certyfikatu SSL
-# Klucz i certyfikat będą w katalogu conf/ssl (wewnątrz kontenera)
+# Generowanie samodzielnie podpisanego certyfikatu SSL (zostaje w obrazie)
 RUN openssl genrsa -out ${APACHE_HOME}/conf/ssl/server.key 2048 && \
     chmod 600 ${APACHE_HOME}/conf/ssl/server.key && \
     openssl req -x509 -new -nodes -key ${APACHE_HOME}/conf/ssl/server.key \
         -sha256 -days 365 -out ${APACHE_HOME}/conf/ssl/server.crt \
         -subj "/C=PL/ST=Kujawsko-Pomorskie/L=Toruń/O=ZSMEiE/OU=IT/CN=${COMMON_NAME}/emailAddress=admin@zsmeie.pl"
 
-# Konfiguracja Apache'a (httpd.conf)
-RUN sed -i "s/^User daemon/User ${APACHE_USER}/" ${APACHE_HOME}/conf/httpd.conf && \
-    sed -i "s/^Group daemon/Group ${APACHE_GROUP}/" ${APACHE_HOME}/conf/httpd.conf && \
-    sed -i 's/^#LoadModule ssl_module modules\/mod_ssl.so/LoadModule ssl_module modules\/mod_ssl.so/' ${APACHE_HOME}/conf/httpd.conf && \
-    sed -i 's/^#Include conf\/extra\/httpd-ssl.conf/Include conf\/extra\/httpd-ssl.conf/' ${APACHE_HOME}/conf/httpd.conf && \
-    sed -i 's/^#LoadModule userdir_module modules\/mod_userdir.so/LoadModule userdir_module modules\/mod_userdir.so/' ${APACHE_HOME}/conf/httpd.conf && \
-    sed -i 's/^#Include conf\/extra\/httpd-userdir.conf/Include conf\/extra\/httpd-userdir.conf/' ${APACHE_HOME}/conf/httpd.conf
-
-# Konfiguracja httpd-ssl.conf
-# DocumentRoot wskazuje na ścieżkę w kontenerze, gdzie będzie montowany wolumin
-RUN sed -i "s|DocumentRoot \".*\"|DocumentRoot \"${APACHE_HOME}/htdocs\"|" ${APACHE_HOME}/conf/extra/httpd-ssl.conf && \
-    sed -i "s|ServerName www.example.com:443|ServerName ${COMMON_NAME}:443|" ${APACHE_HOME}/conf/extra/httpd-ssl.conf && \
-    sed -i "s|ServerAdmin you@example.com|ServerAdmin admin@zsmeie.pl|" ${APACHE_HOME}/conf/extra/httpd-ssl.conf && \
-    sed -i "s|SSLCertificateFile \".*\"|SSLCertificateFile \"${APACHE_HOME}/conf/ssl/server.crt\"|" ${APACHE_HOME}/conf/extra/httpd-ssl.conf && \
-    sed -i "s|SSLCertificateKeyFile \".*\"|SSLCertificateKeyFile \"${APACHE_HOME}/conf/ssl/server.key\"|" ${APACHE_HOME}/conf/extra/httpd-ssl.conf
-
-# Konfiguracja httpd-userdir.conf
-# UserDir wskazuje na ścieżkę w kontenerze, gdzie będzie montowany wolumin dla public_html
-RUN sed -i 's/^UserDir public_html/UserDir public_html/' ${APACHE_HOME}/conf/extra/httpd-userdir.conf && \
-    sed -i '/<Directory "\/home\/user\/public_html">/,/<\/Directory>/s|Require all denied|Require all granted|' ${APACHE_HOME}/conf/extra/httpd-userdir.conf && \
-    sed -i '/<Directory "\/home\/user\/public_html">/,/<\/Directory>/s|AllowOverride None|AllowOverride All|' ${APACHE_HOME}/conf/extra/httpd-userdir.conf
+# !!! WAŻNE !!!
+# Usunięto modyfikacje plików konfiguracyjnych Apache'a (httpd.conf, httpd-ssl.conf, httpd-userdir.conf)
+# Te pliki będą dostarczane z hosta poprzez montowanie woluminów.
+# Obraz Apache będzie zawierał jedynie oryginalne, "czyste" pliki konfiguracyjne po instalacji.
 
 # Czyszczenie plików źródłowych i tymczasowych po kompilacji
 RUN rm -rf /tmp/src
