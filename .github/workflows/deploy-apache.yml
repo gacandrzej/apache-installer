@@ -7,44 +7,39 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy: # Zmieniłem nazwę joba na bardziej pasującą do Compose
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
     - name: Sklonowanie repozytorium
       uses: actions/checkout@v4
 
-    # Krok "Zbuduj obraz Dockera" nie jest już potrzebny,
-    # ponieważ 'docker compose up --build' to zrobi.
+    - name: Zbuduj obraz Dockera # RE-ADD THIS STEP
+      run: docker build -t my-apache-ssl .
+      # This step must happen BEFORE install.sh tries to use the image
 
     - name: Nadanie uprawnień do wykonywania skryptowi install.sh
       run: chmod +x ./install.sh
 
-    - name: Uruchomienie skryptu wdrożeniowego Docker Compose # Krok 3: Wywołuje Twój główny skrypt 'install.sh'.
-      run: sudo ./install.sh # Skrypt install.sh teraz uruchamia 'docker compose'
+    - name: Uruchomienie skryptu wdrożeniowego Docker Compose
+      run: sudo ./install.sh
       shell: bash
 
-    - name: Weryfikacja działania usług Docker Compose # Krok 4: Sprawdzenie, czy usługi działają
+    - name: Weryfikacja działania usług Docker Compose
       run: |
         echo "Lista wszystkich usług Docker Compose:"
         sudo docker compose ps
-
         echo "Pobieranie logów z usługi Apache:"
-        sudo docker compose logs apache --tail 50 # Ogranicza wyjście logów
-
-        # Testowanie dostępu HTTP do usługi Apache (z hosta runnera)
-        # Będzie to działać tylko, jeśli port 80 jest poprawnie mapowany i Apache działa.
+        sudo docker compose logs apache --tail 50
         echo "Testowanie dostępu HTTP (curl z hosta):"
         curl -s -o /dev/null -w "HTTP Code: %{http_code}\n" http://localhost:80/ || true
-
-        # Sprawdzenie, czy proces httpd (Apache) działa w kontenerze Apache.
         echo "Sprawdzanie, czy proces Apache httpd działa w kontenerze Apache..."
         sudo docker compose exec apache ps aux | grep httpd | grep -v grep && echo "Proces Apache httpd znaleziony!" || echo "Proces Apache httpd NIE znaleziony!"
       continue-on-error: true
 
-    - name: Czyszczenie usług Docker Compose # Krok 5: Ważne jest, aby posprzątać zasoby.
+    - name: Czyszczenie usług Docker Compose
       if: always()
       run: |
         echo "Zatrzymywanie i usuwanie usług Docker Compose..."
-        sudo docker compose down -v --rmi all || true # 'down -v' usuwa woluminy, '--rmi all' usuwa obrazy
+        sudo docker compose down -v --rmi all || true
         echo "Czyszczenie zakończone."
