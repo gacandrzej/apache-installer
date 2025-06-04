@@ -121,6 +121,12 @@ if [ ! -f "${HOST_CONF_DIR}/httpd.conf" ]; then
 
     # Modyfikacje w skopiowanych plikach konfiguracyjnych (jak wcześniej w Dockerfile)
     log_info "Modyfikowanie skopiowanych plików konfiguracyjnych na hoście..."
+    # Ustaw ServerName, aby wyeliminować ostrzeżenie AH00558
+    if ! grep -q "ServerName" "${HOST_CONF_DIR}/httpd.conf"; then
+        echo "ServerName localhost" >> "${HOST_CONF_DIR}/httpd.conf"
+    else
+        sed -i 's/^#*ServerName .*/ServerName localhost/' "${HOST_CONF_DIR}/httpd.conf"
+    fi
     # Odkomentuj LoadModule ssl_module i Include conf/extra/httpd-ssl.conf w httpd.conf
     sed -i 's/^#LoadModule ssl_module modules\/mod_ssl.so/LoadModule ssl_module modules\/mod_ssl.so/' "${HOST_CONF_DIR}/httpd.conf"
     sed -i 's/^#Include conf\/extra\/httpd-ssl.conf/Include conf\/extra\/httpd-ssl.conf/' "${HOST_CONF_DIR}/httpd.conf"
@@ -173,11 +179,33 @@ sudo docker run -d \
     -v "${HOST_CONF_DIR}":"${APACHE_HOME_CONTAINER}/conf" \
     --name "${CONTAINER_NAME}" \
     "${IMAGE_NAME}" || log_error "Nie udało się uruchomić kontenera Dockera."
+
 log_info "Kontener '${CONTAINER_NAME}' uruchomiony w tle z woluminami."
 
 # Wyświetlanie logów kontenera w czasie rzeczywistym
-log_info "Wyświetlam logi kontenera (Ctrl+C, aby zakończyć śledzenie logów i pozostawić kontener uruchomiony):"
-sudo docker logs -f "${CONTAINER_NAME}"
+#log_info "Wyświetlam logi kontenera (Ctrl+C, aby zakończyć śledzenie logów i pozostawić kontener uruchomiony):"
+#sudo docker logs -f "${CONTAINER_NAME}"
+# Po prostu kontynuuj po uruchomieniu kontenera
+log_info "Kontener '${CONTAINER_NAME}' uruchomiony w tle z woluminami."
+
+# Jeśli chcesz sprawdzić status kontenera, możesz dodać krótkie sprawdzenie:
+sleep 5 # Daj Apache'owi chwilę na start
+if sudo docker ps -q | grep -q "${CONTAINER_NAME}"; then
+    log_info "Kontener '${CONTAINER_NAME}' działa."
+else
+    log_error "Kontener '${CONTAINER_NAME}' nie działa po uruchomieniu. Sprawdź logi ręcznie: sudo docker logs ${CONTAINER_NAME}"
+fi
+
+# ... (dalej w skrypcie)
+# Jeśli masz dalsze testy HTTP/HTTPS, możesz je teraz uruchomić:
+log_info "Testowanie dostępu HTTP wewnątrz kontenera..."
+# Przykładowy test:
+sudo docker exec "${CONTAINER_NAME}" curl -s http://localhost/ || log_error "Dostęp HTTP nie działa."
+log_info "Test HTTP zakończony pomyślnie."
+
+log_info "Testowanie dostępu HTTPS wewnątrz kontenera (ignorowanie certyfikatu)..."
+sudo docker exec "${CONTAINER_NAME}" curl -sk https://localhost/ || log_error "Dostęp HTTPS nie działa."
+log_info "Test HTTPS zakończony pomyślnie."
 
 log_info "Instalacja i uruchomienie zakończone."
 log_info "Możesz teraz sprawdzić działanie strony głównej: http://localhost oraz https://localhost"
