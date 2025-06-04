@@ -90,14 +90,7 @@ sed -i 's|^PidFile "logs/httpd.pid"|PidFile "/tmp/httpd.pid"|' "${HTTPD_CONF_FIL
 sed -i 's|^LockFile "logs/accept.lock"|LockFile "/tmp/accept.lock"|' "${HTTPD_CONF_FILE_HOST}"
 
 # Uruchamiam kontener 'my-apache-container' na portach 80 (tylko HTTP) z zamontowanymi woluminami...
-# Ważne: Usuń mapowanie portu 443!
-sudo docker run -d --name "${CONTAINER_NAME}" \
-    -p 80:80 \
-    -v "${HOST_CONF_DIR}":"/usr/local/apache2/conf:ro" \
-   # -v "${HOST_HTDOCS_DIR}":"/usr/local/apache2/htdocs"
-   # -v "${HOST_LOGS_DIR}":"/usr/local/apache2/logs"
-   # -v "${HOST_PUBLIC_HTML_MAREK_DIR}":"/home/${USER_MAREK}/public_html"
-    "${IMAGE_NAME}" || log_error "Nie udało się uruchomić kontenera '${CONTAINER_NAME}'."
+sudo docker run -d --name "${CONTAINER_NAME}" -p 80:80 -v "${HOST_CONF_DIR}":"/usr/local/apache2/conf:ro" "${IMAGE_NAME}" || log_error "Nie udało się uruchomić kontenera '${CONTAINER_NAME}'."
 
 
 # ... (reszta skryptu z logami i sprawdzaniem kontenera)
