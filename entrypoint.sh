@@ -58,22 +58,19 @@ log_info "Uprawnienia woluminów danych ustawione pomyślnie."
 log_info "Testowanie konfiguracji Apache'a..."
 
 # Przechwyć wyjście apachectl configtest i sprawdź kod wyjścia
-# Używamy zmiennej do przechwycenia całego wyjścia
 APACHECTL_OUTPUT=$(/usr/local/apache2/bin/apachectl configtest 2>&1)
 APACHECTL_EXIT_CODE=$? # Przechwyć kod wyjścia ostatniego polecenia
+
 if [ ${APACHECTL_EXIT_CODE} -ne 0 ]; then
     echo "ERROR: Apache configtest failed with exit code ${APACHECTL_EXIT_CODE}."
     echo "--- Apache configtest output ---"
     echo "${APACHECTL_OUTPUT}" # Wypisz całe przechwycone wyjście
     echo "-------------------------------"
     exit 1 # Natychmiast zakończ skrypt z błędem
+else
+    # Ta linia zostanie wykonana TYLKO JEŚLI configtest zakończy się sukcesem (exit code 0)
+    log_info "Konfiguracja Apache'a poprawna (Syntax OK)."
 fi
-
-# Uruchom configtest i przekieruj jego standardowe wyjście (stdout) i wyjście błędów (stderr)
-# do standardowego wyjścia skryptu, aby były widoczne w logach Dockera.
-# Jeśli apachectl configtest zwróci błąd, exit 1 spowoduje natychmiastowe zakończenie kontenera
-${APACHE_HOME}/bin/apachectl configtest 2>&1 || { echo "ERROR: Apache configtest failed! See above for details." && exit 1; }
-log_info "Konfiguracja Apache'a poprawna (Syntax OK)."
 
 # Upewnij się, że ServerName jest ustawiony w httpd.conf, aby uniknąć ostrzeżeń
 APACHE_CONF_FILE="${APACHE_HOME}/conf/httpd.conf"
