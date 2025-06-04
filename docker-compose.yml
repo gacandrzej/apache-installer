@@ -12,7 +12,7 @@ services:
     volumes:
       # Pamiętaj, że w Compose ścieżki po lewej stronie są RELATYWNE do miejsca, gdzie jest docker-compose.yml
       # Czyli `./apache_data/conf` odnosi się do `your-repo/apache_data/conf`
-      - ./apache_data/conf:/usr/local/apache2/conf:ro # Konfiguracja, tylko do odczytu
+      - ./apache_data/conf:/usr/local/apache2/conf
       # Poniższe woluminy są zakomentowane do celów debugowania (zgodnie z wcześniejszymi ustaleniami)
       # - ./apache_data/htdocs:/usr/local/apache2/htdocs
       # - ./apache_data/logs:/usr/local/apache2/logs
