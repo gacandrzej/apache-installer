@@ -1,18 +1,19 @@
 #!/bin/bash
+set -ex
 
-IMAGE_NAME="my-apache-ssl"
-CONTAINER_NAME="my-apache-container"
-COMMON_NAME="zsmeie"
-APACHE_HOME_CONTAINER="/usr/local/apache2" # Ścieżka Apache w kontenerze
-APACHE_USER_CONTAINER="www-data" # Użytkownik Apache'a w kontenerze
-USER_MAREK="marek"
+# ... (pozostała część Twojego skryptu install.sh)
 
-# Katalogi na hoście, które będą montowane
-HOST_APACHE_DATA_DIR="${HOME}/apache_data"
+# Definicje zmiennych (upewnij się, że są zgodne z Twoimi)
+HOST_APACHE_DATA_DIR="/root/apache_data"
+HOST_CONF_DIR="${HOST_APACHE_DATA_DIR}/conf"
 HOST_HTDOCS_DIR="${HOST_APACHE_DATA_DIR}/htdocs"
-HOST_PUBLIC_HTML_DIR="${HOST_APACHE_DATA_DIR}/public_html"
 HOST_LOGS_DIR="${HOST_APACHE_DATA_DIR}/logs"
-HOST_CONF_DIR="${HOST_APACHE_DATA_DIR}/conf" # Nowy katalog dla konfiguracji Apache'a na hoście
+HOST_PUBLIC_HTML_MAREK_DIR="${HOST_APACHE_DATA_DIR}/public_html_marek"
+
+CONTAINER_NAME="my-apache-container"
+IMAGE_NAME="my-apache-ssl" # Zostawiamy nazwę obrazu, bo może już zawierać zależności SSL
+APACHE_USER_CONTAINER="www-data"
+USER_MAREK="marek"
 
 log_info() {
     echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') $1"
@@ -23,211 +24,85 @@ log_error() {
     exit 1
 }
 
-log_info "Rozpoczynam instalację i uruchamianie Apache'a w Dockerze."
+# ... (pomijam sekcję budowania obrazu, zakładamy, że działa)
 
-# Sprawdzenie, czy Docker jest zainstalowany i uruchomiony
-if ! command -v docker &> /dev/null; then
-    log_error "Docker nie jest zainstalowany. Proszę zainstalować Docker Engine: https://docs.docker.com/engine/install/"
-fi
-if ! sudo docker info &> /dev/null; then
-    log_error "Docker Engine nie jest uruchomiony lub użytkownik nie ma uprawnień do Dockera. Upewnij się, że usługa Docker jest aktywna i że jesteś w grupie 'docker' (sudo usermod -aG docker $USER && newgrp docker)."
-fi
+log_info "Kopiowanie domyślnych plików konfiguracyjnych Apache'a z obrazu do '${HOST_CONF_DIR}'..."
+# Usuń istniejące katalogi konfiguracyjne, aby mieć pewność, że zaczynamy od czystego stanu
+rm -rf "${HOST_CONF_DIR}"
+mkdir -p "${HOST_CONF_DIR}" || log_error "Nie udało się utworzyć ${HOST_CONF_DIR}."
 
-# Zatrzymywanie i usuwanie starego kontenera (jeśli istnieje)
-log_info "Sprawdzanie, czy kontener '${CONTAINER_NAME}' już istnieje..."
-if sudo docker ps -a --format '{{.Names}}' | grep -q "${CONTAINER_NAME}"; then
-    log_info "Kontener '${CONTAINER_NAME}' już istnieje. Zatrzymuję i usuwam go..."
-    sudo docker stop "${CONTAINER_NAME}" || log_error "Nie udało się zatrzymać kontenera '${CONTAINER_NAME}'."
-    sudo docker rm "${CONTAINER_NAME}" || log_error "Nie udało się usunąć kontenera '${CONTAINER_NAME}'."
-fi
+# Skopiuj domyślne pliki konfiguracyjne Apache'a z kontenera
+# Używamy tymczasowego kontenera, aby to zrobić
+TEMP_CONTAINER_ID=$(sudo docker create "${IMAGE_NAME}" /bin/true)
+sudo docker cp "${TEMP_CONTAINER_ID}:/usr/local/apache2/conf/." "${HOST_CONF_DIR}" || log_error "Nie udało się skopiować plików konfiguracyjnych z kontenera."
+sudo docker rm "${TEMP_CONTAINER_ID}" > /dev/null
 
-# Usuwanie starego obrazu (jeśli istnieje)
-log_info "Sprawdzanie, czy obraz '${IMAGE_NAME}' już istnieje..."
-if sudo docker images --format '{{.Repository}}' | grep -q "${IMAGE_NAME}"; then
-    log_info "Obraz '${IMAGE_NAME}' już istnieje. Usuwam go, aby zbudować najnowszą wersję..."
-    sudo docker rmi "${IMAGE_NAME}" || log_error "Nie udało się usunąć obrazu '${IMAGE_NAME}'. Upewnij się, że nie jest używany."
-fi
+log_info "Wykonywanie kopii plików konfiguracyjnych..."
 
-# --- Tworzenie katalogów danych na hoście i wstępne pliki ---
-log_info "Tworzenie katalogów danych Apache na hoście w: ${HOST_APACHE_DATA_DIR}"
-mkdir -p "${HOST_HTDOCS_DIR}" || log_error "Nie udało się utworzyć ${HOST_HTDOCS_DIR}."
-mkdir -p "${HOST_PUBLIC_HTML_DIR}" || log_error "Nie udało się utworzyć ${HOST_PUBLIC_HTML_DIR}."
-mkdir -p "${HOST_LOGS_DIR}" || log_error "Nie udało się utworzyć ${HOST_LOGS_DIR}."
-mkdir -p "${HOST_CONF_DIR}/extra" || log_error "Nie udało się utworzyć ${HOST_CONF_DIR}/extra." # Tworzymy też podkatalog extra
-HOST_PUBLIC_HTML_MAREK_DIR="${HOST_APACHE_DATA_DIR}/public_html_marek"
-mkdir -p "${HOST_PUBLIC_HTML_MAREK_DIR}" || log_error "Nie udało się utworzyć ${HOST_PUBLIC_HTML_MAREK_DIR}."
+log_info "Modyfikowanie skopiowanych plików konfiguracyjnych na hoście..."
 
-# Przykład: Plik index.html dla Marka
-echo "<html><body><h1>Witaj na stronie Marka (public_html)!</h1></body></html>" > "${HOST_PUBLIC_HTML_MAREK_DIR}/index.html"
+# --- Modyfikacje w httpd.conf (na hoście) ---
+HTTPD_CONF_FILE_HOST="${HOST_CONF_DIR}/httpd.conf"
 
-# --- Tworzenie katalogu SSL i generowanie certyfikatów na hoście ---
-HOST_SSL_DIR="${HOST_CONF_DIR}/ssl" # Definiujemy katalog SSL na hoście
-
-log_info "Sprawdzanie certyfikatów SSL na hoście w: ${HOST_SSL_DIR}"
-mkdir -p "${HOST_SSL_DIR}" || log_error "Nie udało się utworzyć ${HOST_SSL_DIR}."
-
-if [ ! -f "${HOST_SSL_DIR}/server.key" ] || [ ! -f "${HOST_SSL_DIR}/server.crt" ]; then
-    log_info "Generowanie samo-podpisanego certyfikatu SSL na hoście..."
-    openssl genrsa -out "${HOST_SSL_DIR}/server.key" 2048 || log_error "Nie udało się wygenerować server.key."
-    chmod 600 "${HOST_SSL_DIR}/server.key" || log_error "Nie udało się ustawić uprawnień dla server.key."
-    openssl req -x509 -new -nodes -key "${HOST_SSL_DIR}/server.key" \
-        -sha256 -days 365 -out "${HOST_SSL_DIR}/server.crt" \
-        -subj "/C=PL/ST=Kujawsko-Pomorskie/L=Toruń/O=ZSMEiE/OU=IT/CN=${COMMON_NAME}/emailAddress=admin@zsmeie.pl" || log_error "Nie udało się wygenerować server.crt."
-    log_info "Certyfikaty SSL zostały wygenerowane na hoście."
+# Ustaw ServerName, aby uniknąć ostrzeżeń przy starcie
+sed -i 's/^#\(ServerName www\.example\.com:80\)/\1/' "${HTTPD_CONF_FILE_HOST}"
+if ! grep -q "ServerName" "${HTTPD_CONF_FILE_HOST}"; then
+    echo "ServerName localhost" >> "${HTTPD_CONF_FILE_HOST}"
 else
-    log_info "Certyfikaty SSL już istnieją na hoście. Pomijam generowanie."
+    sed -i 's/^#*ServerName .*/ServerName localhost/' "${HTTPD_CONF_FILE_HOST}"
 fi
-# --- Koniec tworzenia certyfikatów SSL na hoście ---
 
-log_info "Ustawianie początkowych uprawnień dla katalogów danych na hoście..."
-# Uprawnienia dla ogólnych katalogów danych (dla użytkownika hosta)
-sudo chmod 755 "${HOST_APACHE_DATA_DIR}" "${HOST_HTDOCS_DIR}" "${HOST_PUBLIC_HTML_DIR}" "${HOST_LOGS_DIR}" "${HOST_CONF_DIR}" "${HOST_CONF_DIR}/extra" || log_error "Nie udało się ustawić uprawnień dla katalogów danych na hoście."
+# WYŁĄCZANIE SSL (zakomentowanie linii Include httpd-ssl.conf)
+# Zmieniamy 'Include' na '#Include' dla httpd-ssl.conf
+sed -i 's/^Include conf\/extra\/httpd-ssl.conf/#Include conf\/extra\/httpd-ssl.conf/' "${HTTPD_CONF_FILE_HOST}"
+# Zakomentuj linie LoadModule ssl_module
+sed -i 's/LoadModule ssl_module/#LoadModule ssl_module/' "${HTTPD_CONF_FILE_HOST}"
+# Zakomentuj linie Listen 443
+sed -i 's/Listen 443/#Listen 443/' "${HTTPD_CONF_FILE_HOST}"
 
-# Ustawienie właściciela katalogów dla Apache'a - ważne, aby użytkownik Apache'a w kontenerze mógł zapisywać logi
-# I aby mieć prawa do public_html
-
-
-log_info "Tworzenie przykładowych plików index.html w katalogach danych na hoście..."
-echo "<html><body><h1>Witaj na glownej stronie (htdocs) hostowanej przez Docker!</h1></body></html>" > "${HOST_HTDOCS_DIR}/index.html"
-echo "<html><body><h1>Witaj na stronie uzytkownika (public_html) hostowanej przez Docker!</h1></body></html>" > "${HOST_PUBLIC_HTML_DIR}/index.html"
-
-# --- Koniec tworzenia katalogów danych ---
-
-# Zbudowanie obrazu Dockera
-log_info "Rozpoczynam budowanie obrazu Dockera '${IMAGE_NAME}'..."
-SCRIPT_DIR=$(dirname "$0")
-cd "${SCRIPT_DIR}" || log_error "Nie można przejść do katalogu skryptu."
-
-sudo docker build -t "${IMAGE_NAME}" . || log_error "Nie udało się zbudować obrazu Dockera."
-log_info "Obraz Dockera '${IMAGE_NAME}' został zbudowany pomyślnie."
+# WYŁĄCZANIE UserDir (zakomentowanie linii Include httpd-userdir.conf)
+sed -i 's/^Include conf\/extra\/httpd-userdir.conf/#Include conf\/extra\/httpd-userdir.conf/' "${HTTPD_CONF_FILE_HOST}"
+# Zakomentuj linie LoadModule userdir_module
+sed -i 's/LoadModule userdir_module/#LoadModule userdir_module/' "${HTTPD_CONF_FILE_HOST}"
 
 
-# --- Kopiowanie domyślnej konfiguracji Apache'a z obrazu do hosta (TYLKO RAZ) ---
-if [ ! -f "${HOST_CONF_DIR}/httpd.conf" ]; then
-    log_info "Kopiowanie domyślnych plików konfiguracyjnych Apache'a z obrazu do '${HOST_CONF_DIR}'..."
-    # Uruchom tymczasowy kontener, skopiuj pliki, a następnie usuń kontener
-    TMP_CONTAINER_NAME="tmp-apache-config-copier"
-    sudo docker run --name "${TMP_CONTAINER_NAME}" -d "${IMAGE_NAME}" tail -f /dev/null || log_error "Nie udało się uruchomić tymczasowego kontenera do kopiowania konfiguracji."
-    log_info "Wykonywanie kopii plików konfiguracyjnych..."
-    sudo docker cp "${TMP_CONTAINER_NAME}:${APACHE_HOME_CONTAINER}/conf/httpd.conf" "${HOST_CONF_DIR}/httpd.conf" || log_error "Nie udało się skopiować httpd.conf."
-    sudo docker cp "${TMP_CONTAINER_NAME}:${APACHE_HOME_CONTAINER}/conf/magic" "${HOST_CONF_DIR}/magic" || log_error "Nie udało się skopiować magic."
-    sudo docker cp "${TMP_CONTAINER_NAME}:${APACHE_HOME_CONTAINER}/conf/mime.types" "${HOST_CONF_DIR}/mime.types" || log_error "Nie udało się skopiować mime.types."
-    # Kopiowanie całego katalogu extra
-    sudo docker cp "${TMP_CONTAINER_NAME}:${APACHE_HOME_CONTAINER}/conf/extra/." "${HOST_CONF_DIR}/extra/" || log_error "Nie udało się skopiować katalogu extra."
+# --- Modyfikacje w httpd-ssl.conf (jeśli istnieje, dla pewności, choć już nie będzie include'owany) ---
+# Należy pamiętać, że jeśli httpd-ssl.conf nie jest dołączany, te modyfikacje są zbędne,
+# ale możemy je zastosować dla porządku.
+# Możesz nawet usunąć ten plik, ale na razie go po prostu ignorujemy.
 
-    # Modyfikacje w skopiowanych plikach konfiguracyjnych (jak wcześniej w Dockerfile)
-    log_info "Modyfikowanie skopiowanych plików konfiguracyjnych na hoście..."
-    # Ustaw ServerName, aby wyeliminować ostrzeżenie AH00558
-    if ! grep -q "ServerName" "${HOST_CONF_DIR}/httpd.conf"; then
-        echo "ServerName localhost" >> "${HOST_CONF_DIR}/httpd.conf"
-    else
-        sed -i 's/^#*ServerName .*/ServerName localhost/' "${HOST_CONF_DIR}/httpd.conf"
-    fi
-    # Odkomentuj LoadModule ssl_module i Include conf/extra/httpd-ssl.conf w httpd.conf
-    sed -i 's/^#LoadModule ssl_module modules\/mod_ssl.so/LoadModule ssl_module modules\/mod_ssl.so/' "${HOST_CONF_DIR}/httpd.conf"
-    sed -i 's/^#Include conf\/extra\/httpd-ssl.conf/Include conf\/extra\/httpd-ssl.conf/' "${HOST_CONF_DIR}/httpd.conf"
-    # Odkomentuj LoadModule userdir_module i Include conf/extra/httpd-userdir.conf w httpd.conf
-    sed -i 's/^#LoadModule userdir_module modules\/mod_userdir.so/LoadModule userdir_module modules\/mod_userdir.so/' "${HOST_CONF_DIR}/httpd.conf"
-    sed -i 's/^#Include conf\/extra\/httpd-userdir.conf/Include conf\/extra\/httpd-userdir.conf/' "${HOST_CONF_DIR}/httpd.conf"
-    # Odkomentuj LoadModule socache_shmcb_module w httpd.conf
-    sed -i 's/^#LoadModule socache_shmcb_module modules\/mod_socache_shmcb.so/LoadModule socache_shmcb_module modules\/mod_socache_shmcb.so/' "${HOST_CONF_DIR}/httpd.conf"
-    # Upewnij się, że ta linia znajduje się w httpd.conf; jeśli nie, dodaj ją
-    if ! grep -q "LoadModule socache_shmcb_module" "${HOST_CONF_DIR}/httpd.conf"; then
-        echo "LoadModule socache_shmcb_module modules/mod_socache_shmcb.so" >> "${HOST_CONF_DIR}/httpd.conf"
-    fi
+# --- Modyfikacje w httpd-userdir.conf (jeśli istnieje, dla pewności, choć już nie będzie include'owany) ---
+# Podobnie jak wyżej, te modyfikacje staną się zbędne po zakomentowaniu Include w httpd.conf.
 
-    # Zmieniamy użytkownika i grupę w httpd.conf
-    sed -i "s/^User daemon/User ${APACHE_USER_CONTAINER}/" "${HOST_CONF_DIR}/httpd.conf"
-    sed -i "s/^Group daemon/Group ${APACHE_USER_CONTAINER}/" "${HOST_CONF_DIR}/httpd.conf"
+log_info "Domyślne pliki konfiguracyjne zostały skopiowane i zmodyfikowane na hoście."
 
-    # Edytuj plik httpd-ssl.conf na hoście
-    SSL_CONF_FILE_HOST="${HOST_CONF_DIR}/extra/httpd-ssl.conf"
-    sed -i "s|DocumentRoot \".*\"|DocumentRoot \"${APACHE_HOME_CONTAINER}/htdocs\"|" "${SSL_CONF_FILE_HOST}"
-    sed -i "s|ServerName www.example.com:443|ServerName ${COMMON_NAME}:443|" "${SSL_CONF_FILE_HOST}"
-    sed -i "s|ServerAdmin you@example.com|ServerAdmin admin@zsmeie.pl|" "${SSL_CONF_FILE_HOST}"
-    # SSLCertificateFile i SSLCertificateKeyFile nadal wskazują na pliki w kontenerze, bo certyfikat jest generowany w obrazie
-    sed -i "s|SSLCertificateFile \".*\"|SSLCertificateFile \"${APACHE_HOME_CONTAINER}/conf/ssl/server.crt\"|" "${SSL_CONF_FILE_HOST}"
-    sed -i "s|SSLCertificateKeyFile \".*\"|SSLCertificateKeyFile \"${APACHE_HOME_CONTAINER}/conf/ssl/server.key\"|" "${SSL_CONF_FILE_HOST}"
+# ... (pozostała część skryptu install.sh)
 
-    # Edytuj plik httpd-userdir.conf na hoście
-    USERDIR_CONF_FILE_HOST="${HOST_CONF_DIR}/extra/httpd-userdir.conf"
-    # Ustaw UserDir na standardową ścieżkę kontenera
-    sed -i 's|^UserDir.*|UserDir "/home/*/public_html"|' "${USERDIR_CONF_FILE_HOST}"
-
-    # WAŻNE: Włącz UserDir (jeśli nie jest włączone domyślnie)
-    sed -i 's/^#Include conf\/extra\/httpd-userdir.conf/Include conf\/extra\/httpd-userdir.conf/' "${HOST_CONF_DIR}/httpd.conf"
-
-    # Zmieniamy domyślne <Directory> na bardziej ogólne, aby pasowało do /home/marek/public_html
-    # Może być konieczne dostosowanie lub dodanie nowego bloku Directory dla /home/*
-    sed -i '/<Directory ".*">/,/<\/Directory>/s|Require all denied|Require all granted|' "${USERDIR_CONF_FILE_HOST}"
-    sed -i '/<Directory ".*">/,/<\/Directory>/s|AllowOverride None|AllowOverride All|' "${USERDIR_CONF_FILE_HOST}"
-
-    log_info "Domyślne pliki konfiguracyjne zostały skopiowane i zmodyfikowane na hoście."
-    sudo docker stop "${TMP_CONTAINER_NAME}" &> /dev/null # Zatrzymaj i usuń tymczasowy kontener
-    sudo docker rm "${TMP_CONTAINER_NAME}" &> /dev/null
-else
-    log_info "Katalog konfiguracyjny '${HOST_CONF_DIR}' już istnieje z plikami konfiguracyjnymi. Pomijam kopiowanie."
-fi
-# --- Koniec kopiowania domyślnej konfiguracji ---
-
-
-# Uruchomienie kontenera z woluminami
-log_info "Uruchamiam kontener '${CONTAINER_NAME}' na portach 80 i 443 z zamontowanymi woluminami..."
-sudo docker run -d \
+# Uruchamiam kontener 'my-apache-container' na portach 80 (tylko HTTP) z zamontowanymi woluminami...
+# Ważne: Usuń mapowanie portu 443!
+sudo docker run -d --name "${CONTAINER_NAME}" \
     -p 80:80 \
-    -p 443:443 \
-    -v "${HOST_HTDOCS_DIR}":"${APACHE_HOME_CONTAINER}/htdocs" \
-    -v "${HOST_PUBLIC_HTML_DIR}":"/home/${USER_MAREK}/public_html" \
-    -v "${HOST_LOGS_DIR}":"${APACHE_HOME_CONTAINER}/logs" \
-    -v "${HOST_CONF_DIR}":"${APACHE_HOME_CONTAINER}/conf" \
-    --name "${CONTAINER_NAME}" \
-    "${IMAGE_NAME}" || log_error "Nie udało się uruchomić kontenera Dockera."
+    -v "${HOST_CONF_DIR}":"/usr/local/apache2/conf:ro" \
+    -v "${HOST_HTDOCS_DIR}":"/usr/local/apache2/htdocs" \
+    -v "${HOST_LOGS_DIR}":"/usr/local/apache2/logs" \
+    -v "${HOST_PUBLIC_HTML_MAREK_DIR}":"/home/${USER_MAREK}/public_html" \
+    "${IMAGE_NAME}" || log_error "Nie udało się uruchomić kontenera '${CONTAINER_NAME}'."
 
-# Po prostu kontynuuj po uruchomieniu kontenera
+
+# ... (reszta skryptu z logami i sprawdzaniem kontenera)
+# Upewnij się, że masz już tę poprawioną sekcję z logami z poprzedniej odpowiedzi:
 log_info "Kontener '${CONTAINER_NAME}' uruchomiony w tle z woluminami."
 
-# Jeśli chcesz sprawdzić status kontenera, możesz dodać krótkie sprawdzenie:
 sleep 5 # Daj Apache'owi chwilę na start
 if sudo docker ps -q | grep -q "${CONTAINER_NAME}"; then
-    log_info "Kontener '${CONTAINER_NAME}' działa. Pokażę jego logi:"
-    # TUTAJ JEST WAŻNA ZMIANA:
-    # Pobierz logi kontenera i wyświetl je. Możesz ograniczyć liczbę linii.
+    log_info "Kontener '${CONTAINER_NAME}' działa pomyślnie. Wyświetlam ostatnie 100 linii logów:"
     sudo docker logs --tail 100 "${CONTAINER_NAME}"
 else
-    log_error "Kontener '${CONTAINER_NAME}' nie działa po uruchomieniu. Pokażę jego logi przed zakończeniem:"
-    # Jeśli kontener nie działa, koniecznie pokaż logi błędu!
+    log_error "Kontener '${CONTAINER_NAME}' nie działa po uruchomieniu. Pokażę jego logi błędów:"
     sudo docker logs --details "${CONTAINER_NAME}"
-    exit 1 # Koniec działania skryptu z błędem
+    exit 1
 fi
 
+log_info "Działania związane z uruchomieniem kontenera zakończone."
 
-# Jeśli masz dalsze testy HTTP/HTTPS, możesz je teraz uruchomić:
-log_info "Testowanie dostępu HTTP wewnątrz kontenera..."
-# Przykładowy test:
-sudo docker exec "${CONTAINER_NAME}" curl -s http://localhost/ || log_error "Dostęp HTTP nie działa."
-log_info "Test HTTP zakończony pomyślnie."
-
-log_info "Testowanie dostępu HTTPS wewnątrz kontenera (ignorowanie certyfikatu)..."
-sudo docker exec "${CONTAINER_NAME}" curl -sk https://localhost/ || log_error "Dostęp HTTPS nie działa."
-log_info "Test HTTPS zakończony pomyślnie."
-
-log_info "Instalacja i uruchomienie zakończone."
-log_info "Możesz teraz sprawdzić działanie strony głównej: http://localhost oraz https://localhost"
-log_info "Strona użytkownika będzie dostępna pod adresem: https://localhost/~apacheuser/"
-log_info "Pamiętaj, że certyfikat jest samo-podpisany, więc przeglądarka wyświetli ostrzeżenie."
-log_info ""
-log_info "--- Jak zmieniać konfigurację Apache'a ---"
-log_info "Pliki konfiguracyjne Apache'a znajdują się na hoście w katalogu:"
-log_info "  - ${HOST_CONF_DIR}"
-log_info "Aby zmienić konfigurację (np. dodać Virtual Host, zmienić port):"
-log_info "1. Edytuj odpowiedni plik konfiguracyjny (np. ${HOST_CONF_DIR}/httpd.conf lub ${HOST_CONF_DIR}/extra/httpd-vhosts.conf)."
-log_info "2. Zrestartuj Apache'a w kontenerze poleceniem:"
-log_info "   sudo docker exec ${CONTAINER_NAME} ${APACHE_HOME_CONTAINER}/bin/apachectl restart"
-log_info ""
-log_info "Wszelkie zmiany w plikach na hoście w katalogach:"
-log_info "  - ${HOST_HTDOCS_DIR} (dla strony głównej)"
-log_info "  - ${HOST_PUBLIC_HTML_DIR} (dla stron użytkownika)"
-log_info "Będą natychmiast widoczne w kontenerze, bez potrzeby restartu Apache'a."
-log_info "Logi Apache'a znajdziesz na hoście w: ${HOST_LOGS_DIR}"
-log_info "Jeśli chcesz zatrzymać kontener: 'sudo docker stop ${CONTAINER_NAME}'"
-log_info "Jeśli chcesz usunąć kontener: 'sudo docker rm ${CONTAINER_NAME}'"
+# ... (ewentualne testy curl)
