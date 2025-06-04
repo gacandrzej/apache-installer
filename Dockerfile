@@ -88,5 +88,10 @@ EXPOSE 80 443
 
 # Definiowanie entrypoint.sh (skrypt startowy)
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN sed -i 's|exec "$@"|exec "$@" || echo "Apache failed to start. Check command/config." && exit 1|' /usr/local/bin/entrypoint.sh
+# To modyfikuje entrypoint tak, by wyświetlił komunikat i zakończył się z błędem, jeśli główna komenda zawiedzie.
+
+# Możesz również dodać więcej `set -x` w entrypoint.sh dla bardziej szczegółowych logów.
+RUN sed -i '1s/^/#!\/bin\/bash\nset -ex\n/' /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

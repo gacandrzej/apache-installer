@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -ex
 APACHE_HOME="/usr/local/apache2"
 APACHE_USER="www-data"
 APACHE_GROUP="www-data"
