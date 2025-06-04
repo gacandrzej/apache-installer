@@ -45,7 +45,7 @@ RUN useradd -r -N -m -d /home/marek -G www-data -s /bin/bash marek && \
     chmod -R 755 /home/marek/public_html
 
 # Opcjonalnie: Ustawienie domyślnej zawartości dla public_html Marka
-COPY ./public_html_marek_default/ /home/marek/public_html/
+#COPY ./public_html_marek_default/ /home/marek/public_html/
 
 # Tworzenie katalogów Apache (bez htdocs, public_html, conf, logs, bo będą montowane)
 # Pozostawiamy conf/ssl, bo certyfikaty są generowane w obrazie
