@@ -35,7 +35,7 @@ log_info "Ustawianie uprawnień dla zamontowanych woluminów danych..."
 chown -R ${APACHE_USER}:${APACHE_GROUP} ${APACHE_HOME}/htdocs || log_error "Nie udało się zmienić właściciela dla ${APACHE_HOME}/htdocs."
 chmod -R 755 ${APACHE_HOME}/htdocs || log_error "Nie udało się zmienić uprawnień dla ${APACHE_HOME}/htdocs."
 
-chmod 751 /home/${APACHE_USER} # R-X dla innych (Apache potrzebuje wejścia)
+#chmod 751 /home/${APACHE_USER} # R-X dla innych (Apache potrzebuje wejścia)
 
 # Uprawnienia dla katalogu domowego Marka (będzie zamontowany)
 # Ważne: Jeśli /home/marek nie będzie montowany, ale tylko /home/marek/public_html,
