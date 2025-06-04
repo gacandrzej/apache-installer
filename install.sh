@@ -76,7 +76,18 @@ sed -i 's/LoadModule userdir_module/#LoadModule userdir_module/' "${HTTPD_CONF_F
 
 log_info "Domyślne pliki konfiguracyjne zostały skopiowane i zmodyfikowane na hoście."
 
-# ... (pozostała część skryptu install.sh)
+# Upewnij się, że Apache loguje do stdout/stderr
+# (Powinien to już robić domyślnie w oficjalnych obrazach, ale dla pewności)
+# Możesz dodać:
+sed -i 's/^ErrorLog .*$/ErrorLog "\/dev\/stderr"/' "${HTTPD_CONF_FILE_HOST}"
+sed -i 's/^CustomLog .*$/CustomLog "\/dev\/stdout" combined/' "${HTTPD_CONF_FILE_HOST}"
+
+# Zmień ścieżkę do pliku PID, na miejsce w /tmp lub /var/run, które jest woluminem tymczasowym kontenera
+# i nie jest montowane z hosta. To eliminuje problemy z uprawnieniami na hoście.
+sed -i 's|^PidFile "logs/httpd.pid"|PidFile "/tmp/httpd.pid"|' "${HTTPD_CONF_FILE_HOST}"
+
+# Jeśli masz dyrektywę LockFile (niektóre starsze wersje Apache'a), zmień ją też
+sed -i 's|^LockFile "logs/accept.lock"|LockFile "/tmp/accept.lock"|' "${HTTPD_CONF_FILE_HOST}"
 
 # Uruchamiam kontener 'my-apache-container' na portach 80 (tylko HTTP) z zamontowanymi woluminami...
 # Ważne: Usuń mapowanie portu 443!

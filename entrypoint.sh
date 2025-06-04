@@ -90,5 +90,17 @@ log_info "Moduł SSL (ssl_module) jest załadowany."
 
 log_info "Entrypoint wykonany. Uruchamiam Apache'a na pierwszym planie..."
 
-# Uruchomienie Apache'a na pierwszym planie
-exec ${APACHE_HOME}/bin/httpd -DFOREGROUND "$@" || { echo "Apache failed to start. Check command/config." && exit 1; }
+# Dodaj jawne przekierowanie stdout i stderr do logów Dockera,
+# nawet jeśli `-DFOREGROUND` to domyślnie robi.
+# Użyj 'set -x' lokalnie dla tej komendy, żeby zobaczyć, czy w ogóle dochodzi do uruchomienia
+# i czy coś się dzieje.
+set -x # Włącz verbose logging dla tej sekcji
+exec ${APACHE_HOME}/bin/httpd -DFOREGROUND "$@" >&2 || {
+    echo "ERROR: Apache failed to start. Check command/config/permissions."
+    # Dodaj to, aby zobaczyć, czy Apache wypisał cokolwiek, zanim zginął
+    # To jest na wypadek, gdyby jego własne logi nie były domyślnie na stderr
+    # Niestety to polecenie nie zadziała, bo proces juz sie zakonczy.
+    # Musimy opierac sie na tym, co Apache sam wypisze.
+    exit 1
+}
+set +x # Wyłącz verbose logging
