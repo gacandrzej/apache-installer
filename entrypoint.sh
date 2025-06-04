@@ -42,7 +42,7 @@ chmod 751 /home/${APACHE_USER} # R-X dla innych (Apache potrzebuje wejścia)
 # to entrypoint powinien tylko zajmować się /home/marek/public_html.
 # Jeśli montujesz całe /home/marek, to dostosuj:
 if [ -d "/home/${USER_MAREK}/public_html" ]; then
-    chown -R ${USER_MAREK}:${USER_MAREK} /home/${USER_MAREK}/public_html
+    chown -R ${USER_MAREK}:${APACHE_USER} /home/${USER_MAREK}/public_html
     chmod -R 755 /home/${USER_MAREK}/public_html
 else
     log_info "Katalog public_html dla ${USER_MAREK} nie został znaleziony (może nie jest zamontowany). Pomijam ustawianie uprawnień."

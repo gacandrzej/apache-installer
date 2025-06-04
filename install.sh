@@ -151,7 +151,11 @@ if [ ! -f "${HOST_CONF_DIR}/httpd.conf" ]; then
     # Edytuj plik httpd-userdir.conf na hoście
     USERDIR_CONF_FILE_HOST="${HOST_CONF_DIR}/extra/httpd-userdir.conf"
     # Ustaw UserDir na standardową ścieżkę kontenera
-    sed -i 's|^UserDir.*|UserDir "/home/"*' "${USERDIR_CONF_FILE_HOST}"
+    sed -i 's|^UserDir.*|UserDir "/home/*/public_html"|' "${USERDIR_CONF_FILE_HOST}"
+
+    # WAŻNE: Włącz UserDir (jeśli nie jest włączone domyślnie)
+    sed -i 's/^#Include conf\/extra\/httpd-userdir.conf/Include conf\/extra\/httpd-userdir.conf/' "${HOST_CONF_DIR}/httpd.conf"
+
     # Zmieniamy domyślne <Directory> na bardziej ogólne, aby pasowało do /home/marek/public_html
     # Może być konieczne dostosowanie lub dodanie nowego bloku Directory dla /home/*
     sed -i '/<Directory ".*">/,/<\/Directory>/s|Require all denied|Require all granted|' "${USERDIR_CONF_FILE_HOST}"
