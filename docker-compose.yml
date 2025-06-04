@@ -1,0 +1,25 @@
+version: '3.8' # Zalecana wersja Compose
+
+services:
+  apache:
+    build: # Instrukcje do zbudowania obrazu
+      context: . # Kontekst budowania to bieżący katalog (gdzie jest Dockerfile)
+      dockerfile: Dockerfile # Nazwa Twojego Dockerfile
+    image: my-apache-ssl # Nazwa obrazu, który zostanie zbudowany
+    container_name: my-apache-container # Nazwa kontenera
+    ports:
+      - "80:80" # Mapowanie portów: HOST:CONTAINER
+    volumes:
+      # Pamiętaj, że w Compose ścieżki po lewej stronie są RELATYWNE do miejsca, gdzie jest docker-compose.yml
+      # Czyli `./apache_data/conf` odnosi się do `your-repo/apache_data/conf`
+      - ./apache_data/conf:/usr/local/apache2/conf:ro # Konfiguracja, tylko do odczytu
+      # Poniższe woluminy są zakomentowane do celów debugowania (zgodnie z wcześniejszymi ustaleniami)
+      # - ./apache_data/htdocs:/usr/local/apache2/htdocs
+      # - ./apache_data/logs:/usr/local/apache2/logs
+      # - ./apache_data/public_html_marek:/home/marek/public_html
+    environment: # Zmienne środowiskowe dla kontenera, jeśli potrzebne
+      - APACHE_RUN_USER=www-data
+      - APACHE_RUN_GROUP=www-data
+    restart: "no" # Lub "always", "on-failure" - na razie "no" do debugowania
+    # entrypoint: /usr/local/bin/entrypoint.sh # Jeśli chcesz nadpisać domyślny ENTRYPOINT z Dockerfile
+    # command: httpd -DFOREGROUND # Jeśli chcesz nadpisać domyślny COMMAND z Dockerfile

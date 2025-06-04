@@ -1,41 +1,7 @@
 #!/bin/bash
 set -ex
 
-# ... (pozostała część Twojego skryptu install.sh)
-
-# Definicje zmiennych (upewnij się, że są zgodne z Twoimi)
-# ZDEFINIUJ KATALOG GŁÓWNY DANYCH APACHE'A W REPOZYTORIUM
-# Użyj "$(pwd)" aby uzyskać bieżący katalog roboczy (czyli katalog repozytorium)
-# lub po prostu "." jeśli zakładamy, że install.sh jest w głównym katalogu repo.
-# Możesz też zdefiniować to jako zmienną środowiskową w GitHub Actions workflow.
-# Przyjmijmy, że install.sh jest w głównym katalogu repo, a dane są w podkatalogu 'apache_data'.
-
-# Jeśli install.sh jest w głównym katalogu repo, a apache_data jest podkatalogiem:
-HOST_APACHE_DATA_BASE_DIR="$(pwd)/apache_data" # Zmieniamy nazwę zmiennej dla jasności
-# Jeśli apache_data_base_dir ma być /root/apache_data (a install.sh go tam tworzy), to zostaw jak jest,
-# ale upewnij się, że masz tam uprawnienia. Zazwyczaj jednak tworzy się je w $HOME.
-
-# ZMIEŃ TE DEFINICJE ZMIENNYCH:
-# Zamiast: HOST_APACHE_DATA_DIR="/root/apache_data"
-# Użyj:
-HOST_APACHE_DATA_DIR="${HOST_APACHE_DATA_BASE_DIR}"
-HOST_CONF_DIR="${HOST_APACHE_DATA_DIR}/conf"
-HOST_HTDOCS_DIR="${HOST_APACHE_DATA_DIR}/htdocs"
-HOST_LOGS_DIR="${HOST_APACHE_DATA_DIR}/logs"
-HOST_PUBLIC_HTML_MAREK_DIR="${HOST_APACHE_DATA_DIR}/public_html_marek"
-
-CONTAINER_NAME="my-apache-container"
-IMAGE_NAME="my-apache-ssl" # Zostawiamy nazwę obrazu, bo może już zawierać zależności SSL
-APACHE_USER_CONTAINER="www-data"
-USER_MAREK="marek"
-
-# PRZED URUCHOMIENIEM KONTENERA DOCKERA, UPEWNIJ SIĘ, ŻE WSZYSTKIE KATALOGI NA HOŚCIE ISTNIEJĄ
-# I MAJĄ ODPOWIEDNIE UPRAWNIENIA (TO NADAL WAŻNE, ALE TERAZ POWINNO DZIAŁAĆ)
-mkdir -p "${HOST_CONF_DIR}"
-mkdir -p "${HOST_HTDOCS_DIR}"
-mkdir -p "${HOST_LOGS_DIR}"
-mkdir -p "${HOST_PUBLIC_HTML_MAREK_DIR}"
-
+# Funkcje logowania
 log_info() {
     echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') $1"
 }
@@ -45,27 +11,35 @@ log_error() {
     exit 1
 }
 
-# ... (pomijam sekcję budowania obrazu, zakładamy, że działa)
+# Definicje zmiennych
+HOST_APACHE_DATA_BASE_DIR="$(pwd)/apache_data"
+HOST_CONF_DIR="${HOST_APACHE_DATA_BASE_DIR}/conf"
+
+# Upewnij się, że katalogi na hoście istnieją
+mkdir -p "${HOST_CONF_DIR}" || log_error "Nie udało się utworzyć ${HOST_CONF_DIR}."
+# Możesz dodać mkdir -p dla htdocs, logs, public_html_marek jeśli będą potrzebne w przyszłości
+# mkdir -p "${HOST_APACHE_DATA_BASE_DIR}/htdocs"
+# mkdir -p "${HOST_APACHE_DATA_BASE_DIR}/logs"
+# mkdir -p "${HOST_APACHE_DATA_BASE_DIR}/public_html_marek"
+
 
 log_info "Kopiowanie domyślnych plików konfiguracyjnych Apache'a z obrazu do '${HOST_CONF_DIR}'..."
 # Usuń istniejące katalogi konfiguracyjne, aby mieć pewność, że zaczynamy od czystego stanu
 rm -rf "${HOST_CONF_DIR}"
 mkdir -p "${HOST_CONF_DIR}" || log_error "Nie udało się utworzyć ${HOST_CONF_DIR}."
 
-# Skopiuj domyślne pliki konfiguracyjne Apache'a z kontenera
-# Używamy tymczasowego kontenera, aby to zrobić
-TEMP_CONTAINER_ID=$(sudo docker create "${IMAGE_NAME}" /bin/true)
+# Stwórz tymczasowy kontener, aby skopiować z niego domyślne pliki konfiguracyjne
+# Musisz użyć nazwy obrazu, która zostanie zbudowana przez Compose (my-apache-ssl)
+TEMP_CONTAINER_ID=$(sudo docker create my-apache-ssl /bin/true)
 sudo docker cp "${TEMP_CONTAINER_ID}:/usr/local/apache2/conf/." "${HOST_CONF_DIR}" || log_error "Nie udało się skopiować plików konfiguracyjnych z kontenera."
 sudo docker rm "${TEMP_CONTAINER_ID}" > /dev/null
-
-log_info "Wykonywanie kopii plików konfiguracyjnych..."
 
 log_info "Modyfikowanie skopiowanych plików konfiguracyjnych na hoście..."
 
 # --- Modyfikacje w httpd.conf (na hoście) ---
 HTTPD_CONF_FILE_HOST="${HOST_CONF_DIR}/httpd.conf"
 
-# Ustaw ServerName, aby uniknąć ostrzeżeń przy starcie
+# Ustaw ServerName
 sed -i 's/^#\(ServerName www\.example\.com:80\)/\1/' "${HTTPD_CONF_FILE_HOST}"
 if ! grep -q "ServerName" "${HTTPD_CONF_FILE_HOST}"; then
     echo "ServerName localhost" >> "${HTTPD_CONF_FILE_HOST}"
@@ -73,61 +47,42 @@ else
     sed -i 's/^#*ServerName .*/ServerName localhost/' "${HTTPD_CONF_FILE_HOST}"
 fi
 
-# WYŁĄCZANIE SSL (zakomentowanie linii Include httpd-ssl.conf)
-# Zmieniamy 'Include' na '#Include' dla httpd-ssl.conf
+# WYŁĄCZANIE SSL
 sed -i 's/^Include conf\/extra\/httpd-ssl.conf/#Include conf\/extra\/httpd-ssl.conf/' "${HTTPD_CONF_FILE_HOST}"
-# Zakomentuj linie LoadModule ssl_module
 sed -i 's/LoadModule ssl_module/#LoadModule ssl_module/' "${HTTPD_CONF_FILE_HOST}"
-# Zakomentuj linie Listen 443
 sed -i 's/Listen 443/#Listen 443/' "${HTTPD_CONF_FILE_HOST}"
 
-# WYŁĄCZANIE UserDir (zakomentowanie linii Include httpd-userdir.conf)
+# WYŁĄCZANIE UserDir
 sed -i 's/^Include conf\/extra\/httpd-userdir.conf/#Include conf\/extra\/httpd-userdir.conf/' "${HTTPD_CONF_FILE_HOST}"
-# Zakomentuj linie LoadModule userdir_module
 sed -i 's/LoadModule userdir_module/#LoadModule userdir_module/' "${HTTPD_CONF_FILE_HOST}"
 
-
-# --- Modyfikacje w httpd-ssl.conf (jeśli istnieje, dla pewności, choć już nie będzie include'owany) ---
-# Należy pamiętać, że jeśli httpd-ssl.conf nie jest dołączany, te modyfikacje są zbędne,
-# ale możemy je zastosować dla porządku.
-# Możesz nawet usunąć ten plik, ale na razie go po prostu ignorujemy.
-
-# --- Modyfikacje w httpd-userdir.conf (jeśli istnieje, dla pewności, choć już nie będzie include'owany) ---
-# Podobnie jak wyżej, te modyfikacje staną się zbędne po zakomentowaniu Include w httpd.conf.
-
-log_info "Domyślne pliki konfiguracyjne zostały skopiowane i zmodyfikowane na hoście."
-
 # Upewnij się, że Apache loguje do stdout/stderr
-# (Powinien to już robić domyślnie w oficjalnych obrazach, ale dla pewności)
-# Możesz dodać:
 sed -i 's/^ErrorLog .*$/ErrorLog "\/dev\/stderr"/' "${HTTPD_CONF_FILE_HOST}"
 sed -i 's/^CustomLog .*$/CustomLog "\/dev\/stdout" combined/' "${HTTPD_CONF_FILE_HOST}"
 
-# Zmień ścieżkę do pliku PID, na miejsce w /tmp lub /var/run, które jest woluminem tymczasowym kontenera
-# i nie jest montowane z hosta. To eliminuje problemy z uprawnieniami na hoście.
+# Zmień ścieżkę do pliku PID i LockFile na /tmp
 sed -i 's|^PidFile "logs/httpd.pid"|PidFile "/tmp/httpd.pid"|' "${HTTPD_CONF_FILE_HOST}"
-
-# Jeśli masz dyrektywę LockFile (niektóre starsze wersje Apache'a), zmień ją też
 sed -i 's|^LockFile "logs/accept.lock"|LockFile "/tmp/accept.lock"|' "${HTTPD_CONF_FILE_HOST}"
 
-# Uruchamiam kontener 'my-apache-container' na portach 80 (tylko HTTP) z zamontowanymi woluminami...
-sudo docker run -d --name "${CONTAINER_NAME}" -p 80:80 -v "${HOST_CONF_DIR}":"/usr/local/apache2/conf" "${IMAGE_NAME}" || log_error "Nie udało się uruchomić kontenera '${CONTAINER_NAME}'."
+log_info "Domyślne pliki konfiguracyjne zostały skopiowane i zmodyfikowane na hoście."
 
+# --- Uruchamianie za pomocą Docker Compose ---
+log_info "Uruchamianie usług Docker Compose..."
+# 'docker compose up -d' zbuduje obraz (jeśli go nie ma lub zmienił się Dockerfile)
+# i uruchomi kontener w tle.
+sudo docker compose up -d --build --force-recreate || log_error "Nie udało się uruchomić usług Docker Compose."
 
-# ... (reszta skryptu z logami i sprawdzaniem kontenera)
-# Upewnij się, że masz już tę poprawioną sekcję z logami z poprzedniej odpowiedzi:
-log_info "Kontener '${CONTAINER_NAME}' uruchomiony w tle z woluminami."
+# Możesz dodać krótki sleep, aby dać kontenerowi czas na uruchomienie
+sleep 5
 
-sleep 5 # Daj Apache'owi chwilę na start
-if sudo docker ps -q | grep -q "${CONTAINER_NAME}"; then
-    log_info "Kontener '${CONTAINER_NAME}' działa pomyślnie. Wyświetlam ostatnie 100 linii logów:"
-    sudo docker logs --tail 100 "${CONTAINER_NAME}"
-else
-    log_error "Kontener '${CONTAINER_NAME}' nie działa po uruchomieniu. Pokażę jego logi błędów:"
-    sudo docker logs --details "${CONTAINER_NAME}"
-    exit 1
-fi
+log_info "Weryfikacja statusu kontenerów Docker Compose:"
+sudo docker compose ps
 
-log_info "Działania związane z uruchomieniem kontenera zakończone."
+# Wyświetl logi z usługi Apache (to samo co docker logs)
+log_info "Wyświetlanie logów z usługi Apache (docker compose logs apache):"
+sudo docker compose logs apache
 
-# ... (ewentualne testy curl)
+# Przykładowy test curl (jeśli Apache działa, ale HTTP jest niedostępne)
+# sudo docker compose exec apache curl -s -o /dev/null -w "HTTP Code: %{http_code}\n" http://localhost:80/ || true
+
+log_info "Skrypt install.sh zakończył działanie."
