@@ -69,11 +69,11 @@ RUN tar xjf ${APACHE_TARBALL} && \
     make install
 
 # Generowanie samodzielnie podpisanego certyfikatu SSL (zostaje w obrazie)
-RUN openssl genrsa -out ${APACHE_HOME}/conf/ssl/server.key 2048 && \
-    chmod 600 ${APACHE_HOME}/conf/ssl/server.key && \
-    openssl req -x509 -new -nodes -key ${APACHE_HOME}/conf/ssl/server.key \
-        -sha256 -days 365 -out ${APACHE_HOME}/conf/ssl/server.crt \
-        -subj "/C=PL/ST=Kujawsko-Pomorskie/L=Toruń/O=ZSMEiE/OU=IT/CN=${COMMON_NAME}/emailAddress=admin@zsmeie.pl"
+#RUN openssl genrsa -out ${APACHE_HOME}/conf/ssl/server.key 2048 && \
+#    chmod 600 ${APACHE_HOME}/conf/ssl/server.key && \
+#    openssl req -x509 -new -nodes -key ${APACHE_HOME}/conf/ssl/server.key \
+#        -sha256 -days 365 -out ${APACHE_HOME}/conf/ssl/server.crt \
+#        -subj "/C=PL/ST=Kujawsko-Pomorskie/L=Toruń/O=ZSMEiE/OU=IT/CN=${COMMON_NAME}/emailAddress=admin@zsmeie.pl"
 
 # !!! WAŻNE !!!
 # Usunięto modyfikacje plików konfiguracyjnych Apache'a (httpd.conf, httpd-ssl.conf, httpd-userdir.conf)

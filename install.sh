@@ -53,6 +53,24 @@ mkdir -p "${HOST_HTDOCS_DIR}" || log_error "Nie udało się utworzyć ${HOST_HTD
 mkdir -p "${HOST_PUBLIC_HTML_DIR}" || log_error "Nie udało się utworzyć ${HOST_PUBLIC_HTML_DIR}."
 mkdir -p "${HOST_LOGS_DIR}" || log_error "Nie udało się utworzyć ${HOST_LOGS_DIR}."
 mkdir -p "${HOST_CONF_DIR}/extra" || log_error "Nie udało się utworzyć ${HOST_CONF_DIR}/extra." # Tworzymy też podkatalog extra
+# --- Tworzenie katalogu SSL i generowanie certyfikatów na hoście ---
+HOST_SSL_DIR="${HOST_CONF_DIR}/ssl" # Definiujemy katalog SSL na hoście
+
+log_info "Sprawdzanie certyfikatów SSL na hoście w: ${HOST_SSL_DIR}"
+mkdir -p "${HOST_SSL_DIR}" || log_error "Nie udało się utworzyć ${HOST_SSL_DIR}."
+
+if [ ! -f "${HOST_SSL_DIR}/server.key" ] || [ ! -f "${HOST_SSL_DIR}/server.crt" ]; then
+    log_info "Generowanie samo-podpisanego certyfikatu SSL na hoście..."
+    openssl genrsa -out "${HOST_SSL_DIR}/server.key" 2048 || log_error "Nie udało się wygenerować server.key."
+    chmod 600 "${HOST_SSL_DIR}/server.key" || log_error "Nie udało się ustawić uprawnień dla server.key."
+    openssl req -x509 -new -nodes -key "${HOST_SSL_DIR}/server.key" \
+        -sha256 -days 365 -out "${HOST_SSL_DIR}/server.crt" \
+        -subj "/C=PL/ST=Kujawsko-Pomorskie/L=Toruń/O=ZSMEiE/OU=IT/CN=${COMMON_NAME}/emailAddress=admin@zsmeie.pl" || log_error "Nie udało się wygenerować server.crt."
+    log_info "Certyfikaty SSL zostały wygenerowane na hoście."
+else
+    log_info "Certyfikaty SSL już istnieją na hoście. Pomijam generowanie."
+fi
+# --- Koniec tworzenia certyfikatów SSL na hoście ---
 
 log_info "Ustawianie początkowych uprawnień dla katalogów danych na hoście..."
 # Uprawnienia dla ogólnych katalogów danych (dla użytkownika hosta)
@@ -109,6 +127,12 @@ if [ ! -f "${HOST_CONF_DIR}/httpd.conf" ]; then
     # Odkomentuj LoadModule userdir_module i Include conf/extra/httpd-userdir.conf w httpd.conf
     sed -i 's/^#LoadModule userdir_module modules\/mod_userdir.so/LoadModule userdir_module modules\/mod_userdir.so/' "${HOST_CONF_DIR}/httpd.conf"
     sed -i 's/^#Include conf\/extra\/httpd-userdir.conf/Include conf\/extra\/httpd-userdir.conf/' "${HOST_CONF_DIR}/httpd.conf"
+    # Odkomentuj LoadModule socache_shmcb_module w httpd.conf
+    sed -i 's/^#LoadModule socache_shmcb_module modules\/mod_socache_shmcb.so/LoadModule socache_shmcb_module modules\/mod_socache_shmcb.so/' "${HOST_CONF_DIR}/httpd.conf"
+    # Upewnij się, że ta linia znajduje się w httpd.conf; jeśli nie, dodaj ją
+    if ! grep -q "LoadModule socache_shmcb_module" "${HOST_CONF_DIR}/httpd.conf"; then
+        echo "LoadModule socache_shmcb_module modules/mod_socache_shmcb.so" >> "${HOST_CONF_DIR}/httpd.conf"
+    fi
 
     # Zmieniamy użytkownika i grupę w httpd.conf
     sed -i "s/^User daemon/User ${APACHE_USER_CONTAINER}/" "${HOST_CONF_DIR}/httpd.conf"
