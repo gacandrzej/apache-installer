@@ -38,10 +38,6 @@ RUN apt update && \
 # Pozostawiamy conf/ssl, bo certyfikaty są generowane w obrazie
 RUN mkdir -p ${APACHE_HOME}/conf/ssl
 
-# Tworzenie dedykowanej grupy i użytkownika dla Apache'a
-RUN groupadd ${APACHE_GROUP} && \
-    useradd -r -s /bin/false -g ${APACHE_GROUP} ${APACHE_USER}
-
 # Pobieranie źródeł Apache
 RUN wget --no-check-certificate ${APACHE_URL} && \
     wget --no-check-certificate ${APACHE_ASC_URL} && \
