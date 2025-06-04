@@ -14,6 +14,7 @@ log_error() {
 # Definicje zmiennych
 HOST_APACHE_DATA_BASE_DIR="$(pwd)/apache_data"
 HOST_CONF_DIR="${HOST_APACHE_DATA_BASE_DIR}/conf"
+HTTPD_SSL_CONF_FILE_HOST="${HOST_CONF_DIR}/extra/httpd-ssl.conf"
 
 # Upewnij się, że katalogi na hoście istnieją
 mkdir -p "${HOST_CONF_DIR}" || log_error "Nie udało się utworzyć ${HOST_CONF_DIR}."
@@ -35,6 +36,25 @@ sudo docker cp "${TEMP_CONTAINER_ID}:/usr/local/apache2/conf/." "${HOST_CONF_DIR
 sudo docker rm "${TEMP_CONTAINER_ID}" > /dev/null
 
 log_info "Modyfikowanie skopiowanych plików konfiguracyjnych na hoście..."
+
+# --- NOWY BLOK: Generowanie certyfikatów SSL ---
+log_info 'Generowanie samopodpisanego certyfikatu SSL dla Apache'\''a...'
+mkdir -p "${HOST_APACHE_DATA_BASE_DIR}/ssl" # Upewnij się, że katalog istnieje
+CERT_KEY_PATH="${HOST_APACHE_DATA_BASE_DIR}/ssl/server.key"
+CERT_CRT_PATH="${HOST_APACHE_DATA_BASE_DIR}/ssl/server.crt"
+
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout "${CERT_KEY_PATH}" \
+    -out "${CERT_CRT_PATH}" \
+    -subj "/C=PL/ST=Kujawsko-Pomorskie/L=Toruń/O=MyApacheApp/OU=IT/CN=localhost"
+
+if [ $? -eq 0 ]; then
+    log_info 'Certyfikaty SSL wygenerowane pomyślnie.'
+else
+    log_error 'Błąd podczas generowania certyfikatów SSL. Instalacja zostanie przerwana.'
+    exit 1
+fi
+# --- KONIEC NOWEGO BLOKU ---
 
 # --- Modyfikacje w httpd.conf (na hoście) ---
 HTTPD_CONF_FILE_HOST="${HOST_CONF_DIR}/httpd.conf"
