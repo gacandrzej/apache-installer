@@ -4,7 +4,21 @@ set -ex
 # ... (pozostała część Twojego skryptu install.sh)
 
 # Definicje zmiennych (upewnij się, że są zgodne z Twoimi)
-HOST_APACHE_DATA_DIR="/root/apache_data"
+# ZDEFINIUJ KATALOG GŁÓWNY DANYCH APACHE'A W REPOZYTORIUM
+# Użyj "$(pwd)" aby uzyskać bieżący katalog roboczy (czyli katalog repozytorium)
+# lub po prostu "." jeśli zakładamy, że install.sh jest w głównym katalogu repo.
+# Możesz też zdefiniować to jako zmienną środowiskową w GitHub Actions workflow.
+# Przyjmijmy, że install.sh jest w głównym katalogu repo, a dane są w podkatalogu 'apache_data'.
+
+# Jeśli install.sh jest w głównym katalogu repo, a apache_data jest podkatalogiem:
+HOST_APACHE_DATA_BASE_DIR="$(pwd)/apache_data" # Zmieniamy nazwę zmiennej dla jasności
+# Jeśli apache_data_base_dir ma być /root/apache_data (a install.sh go tam tworzy), to zostaw jak jest,
+# ale upewnij się, że masz tam uprawnienia. Zazwyczaj jednak tworzy się je w $HOME.
+
+# ZMIEŃ TE DEFINICJE ZMIENNYCH:
+# Zamiast: HOST_APACHE_DATA_DIR="/root/apache_data"
+# Użyj:
+HOST_APACHE_DATA_DIR="${HOST_APACHE_DATA_BASE_DIR}"
 HOST_CONF_DIR="${HOST_APACHE_DATA_DIR}/conf"
 HOST_HTDOCS_DIR="${HOST_APACHE_DATA_DIR}/htdocs"
 HOST_LOGS_DIR="${HOST_APACHE_DATA_DIR}/logs"
@@ -14,6 +28,13 @@ CONTAINER_NAME="my-apache-container"
 IMAGE_NAME="my-apache-ssl" # Zostawiamy nazwę obrazu, bo może już zawierać zależności SSL
 APACHE_USER_CONTAINER="www-data"
 USER_MAREK="marek"
+
+# PRZED URUCHOMIENIEM KONTENERA DOCKERA, UPEWNIJ SIĘ, ŻE WSZYSTKIE KATALOGI NA HOŚCIE ISTNIEJĄ
+# I MAJĄ ODPOWIEDNIE UPRAWNIENIA (TO NADAL WAŻNE, ALE TERAZ POWINNO DZIAŁAĆ)
+mkdir -p "${HOST_CONF_DIR}"
+mkdir -p "${HOST_HTDOCS_DIR}"
+mkdir -p "${HOST_LOGS_DIR}"
+mkdir -p "${HOST_PUBLIC_HTML_MAREK_DIR}"
 
 log_info() {
     echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') $1"
@@ -90,7 +111,7 @@ sed -i 's|^PidFile "logs/httpd.pid"|PidFile "/tmp/httpd.pid"|' "${HTTPD_CONF_FIL
 sed -i 's|^LockFile "logs/accept.lock"|LockFile "/tmp/accept.lock"|' "${HTTPD_CONF_FILE_HOST}"
 
 # Uruchamiam kontener 'my-apache-container' na portach 80 (tylko HTTP) z zamontowanymi woluminami...
-sudo docker run -d --name "${CONTAINER_NAME}" -p 80:80 -v "${HOST_CONF_DIR}":"/usr/local/apache2/conf:ro" "${IMAGE_NAME}" || log_error "Nie udało się uruchomić kontenera '${CONTAINER_NAME}'."
+sudo docker run -d --name "${CONTAINER_NAME}" -p 80:80 -v "${HOST_CONF_DIR}":"/usr/local/apache2/conf" "${IMAGE_NAME}" || log_error "Nie udało się uruchomić kontenera '${CONTAINER_NAME}'."
 
 
 # ... (reszta skryptu z logami i sprawdzaniem kontenera)
