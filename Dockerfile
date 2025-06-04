@@ -75,10 +75,6 @@ RUN tar xjf ${APACHE_TARBALL} && \
 #        -sha256 -days 365 -out ${APACHE_HOME}/conf/ssl/server.crt \
 #        -subj "/C=PL/ST=Kujawsko-Pomorskie/L=Toruń/O=ZSMEiE/OU=IT/CN=${COMMON_NAME}/emailAddress=admin@zsmeie.pl"
 
-# !!! WAŻNE !!!
-# Usunięto modyfikacje plików konfiguracyjnych Apache'a (httpd.conf, httpd-ssl.conf, httpd-userdir.conf)
-# Te pliki będą dostarczane z hosta poprzez montowanie woluminów.
-# Obraz Apache będzie zawierał jedynie oryginalne, "czyste" pliki konfiguracyjne po instalacji.
 
 # Czyszczenie plików źródłowych i tymczasowych po kompilacji
 RUN rm -rf /tmp/src
@@ -88,7 +84,7 @@ EXPOSE 80 443
 
 # Definiowanie entrypoint.sh (skrypt startowy)
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN sed -i 's|exec "$@"|exec "$@" || echo "Apache failed to start. Check command/config." && exit 1|' /usr/local/bin/entrypoint.sh
+RUN sed -i 's#exec "$@"#exec "$@" || echo "Apache failed to start. Check command/config." && exit 1#' /usr/local/bin/entrypoint.sh
 # To modyfikuje entrypoint tak, by wyświetlił komunikat i zakończył się z błędem, jeśli główna komenda zawiedzie.
 
 # Możesz również dodać więcej `set -x` w entrypoint.sh dla bardziej szczegółowych logów.
