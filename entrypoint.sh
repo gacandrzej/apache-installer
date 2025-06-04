@@ -95,12 +95,14 @@ log_info "Entrypoint wykonany. Uruchamiam Apache'a na pierwszym planie..."
 # Użyj 'set -x' lokalnie dla tej komendy, żeby zobaczyć, czy w ogóle dochodzi do uruchomienia
 # i czy coś się dzieje.
 set -x # Włącz verbose logging dla tej sekcji
-exec ${APACHE_HOME}/bin/httpd -DFOREGROUND "$@" >&2 || {
-    echo "ERROR: Apache failed to start. Check command/config/permissions."
-    # Dodaj to, aby zobaczyć, czy Apache wypisał cokolwiek, zanim zginął
-    # To jest na wypadek, gdyby jego własne logi nie były domyślnie na stderr
-    # Niestety to polecenie nie zadziała, bo proces juz sie zakonczy.
-    # Musimy opierac sie na tym, co Apache sam wypisze.
+exec ${APACHE_HOME}/bin/httpd -DFOREGROUND "$@" 2>&1 || {
+    # Ten blok wykona się, jeśli 'exec' zawiedzie (np. brak pliku, brak uprawnień)
+    # Albo jeśli 'httpd' sam się natychmiast wyłączy z błędem i zwróci kod wyjścia
+    echo "CRITICAL ERROR: Apache (httpd -DFOREGROUND) failed to start or immediately exited." >&2
+    echo "Command executed: ${APACHE_HOME}/bin/httpd -DFOREGROUND $@" >&2
+    # Próbujemy jeszcze raz uruchomić configtest dla debugowania, może coś się zmieniło
+    # (choć configtest już przeszedł, ale to pokaże błąd, jeśli coś się zepsuło po drodze)
+    echo "Re-running apachectl configtest for debug:" >&2
+    /usr/local/apache2/bin/apachectl configtest 2>&1 || true # Użyj || true, żeby nie zakończyć skryptu
     exit 1
 }
-set +x # Wyłącz verbose logging
