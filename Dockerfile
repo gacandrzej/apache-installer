@@ -45,7 +45,7 @@ RUN groupadd ${APACHE_GROUP} && \
 # Pobieranie źródeł Apache
 RUN wget --no-check-certificate ${APACHE_URL} && \
     wget --no-check-certificate ${APACHE_ASC_URL} && \
-    curl -sO ${APACHE_SHA256_URL}
+    curl --insecure -sO ${APACHE_SHA256_URL}
 
 # Weryfikacja sum kontrolnych i import klucza GPG
 RUN sha256sum -c ${APACHE_TARBALL}.sha256 || exit 1
