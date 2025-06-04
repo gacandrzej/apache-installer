@@ -56,6 +56,27 @@ sed -i 's/^#\(Listen 443\)/\1/' "${HTTPD_CONF_FILE_HOST}"
 # Odkomentuj include httpd-ssl.conf
 sed -i 's/^#\(Include conf\/extra\/httpd-ssl.conf\)/\1/' "${HTTPD_CONF_FILE_HOST}"
 
+# --- NOWE MODYFIKACJE DLA HTTPD-SSL.CONF ---
+log_info 'Modyfikowanie httpd-ssl.conf na hoście, aby wskazywał na wygenerowane certyfikaty...'
+
+# Upewnij się, że SSLEngine jest włączony (domyślnie może być, ale sprawdź)
+# Jeśli nie ma "SSLEngine on", dodaj go pod VirtualHost, albo odkomentuj istniejący.
+sed -i '/<VirtualHost _default_:443>/aSSLEngine on' "${HTTPD_SSL_CONF_FILE_HOST}"
+# Jeśli już jest, ale zakomentowany, zmień na:
+# sed -i 's/^#\(SSLEngine on\)/\1/' "${HTTPD_SSL_CONF_FILE_HOST}"
+
+# Ustaw ścieżki do certyfikatów
+# Upewnij się, że te linie są w sekcji <VirtualHost _default_:443>
+sed -i 's|^SSLCertificateFile ".*"|SSLCertificateFile "/usr/local/apache2/conf/ssl/server.crt"|' "${HTTPD_SSL_CONF_FILE_HOST}"
+sed -i 's|^SSLCertificateKeyFile ".*"|SSLCertificateKeyFile "/usr/local/apache2/conf/ssl/server.key"|' "${HTTPD_SSL_CONF_FILE_HOST}"
+
+# Opcjonalnie: ustaw ServerName w httpd-ssl.conf, jeśli potrzebujesz
+# Jeśli w httpd-ssl.conf masz ServerName www.example.com:443, zmień na localhost:443
+sed -i 's/^ServerName .*$/ServerName localhost:443/' "${HTTPD_SSL_CONF_FILE_HOST}"
+
+# Odkomentuj moduł zarządzania pamięcią podręczną dla SSL (mod_socache_shmcb)
+sed -i 's/^#\(LoadModule socache_shmcb_module modules\/mod_socache_shmcb\.so\)/\1/' "${HTTPD_CONF_FILE_HOST}"
+
 # WYŁĄCZANIE UserDir
 sed -i 's/^Include conf\/extra\/httpd-userdir.conf/#Include conf\/extra\/httpd-userdir.conf/' "${HTTPD_CONF_FILE_HOST}"
 sed -i 's/LoadModule userdir_module/#LoadModule userdir_module/' "${HTTPD_CONF_FILE_HOST}"
