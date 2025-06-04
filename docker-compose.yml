@@ -1,5 +1,3 @@
-version: '3.8' # Zalecana wersja Compose
-
 services:
   apache:
     build: # Instrukcje do zbudowania obrazu

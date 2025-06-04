@@ -25,11 +25,11 @@ log_info "Ustawianie uprawnień dla zamontowanych woluminów danych..."
 # httpd.conf i inne pliki konfiguracyjne:
 # Muszą być czytelne dla użytkownika Apache'a.
 # Zwykle te pliki są montowane jako read-only, ale dla pewności ustawiamy.
-chown -R root:${APACHE_GROUP} ${APACHE_HOME}/conf || log_error "Nie udało się zmienić właściciela dla ${APACHE_HOME}/conf."
-chmod -R 755 ${APACHE_HOME}/conf || log_error "Nie udało się zmienić uprawnień dla ${APACHE_HOME}/conf."
+#chown -R root:${APACHE_GROUP} ${APACHE_HOME}/conf || log_error "Nie udało się zmienić właściciela dla ${APACHE_HOME}/conf."
+#chmod -R 755 ${APACHE_HOME}/conf || log_error "Nie udało się zmienić uprawnień dla ${APACHE_HOME}/conf."
 # SSL klucze powinny być tylko dla roota
-chown root:root ${APACHE_HOME}/conf/ssl/server.key
-chmod 600 ${APACHE_HOME}/conf/ssl/server.key
+#chown root:root ${APACHE_HOME}/conf/ssl/server.key
+#chmod 600 ${APACHE_HOME}/conf/ssl/server.key
 
 # htdocs: katalog główny stron WWW
 chown -R ${APACHE_USER}:${APACHE_GROUP} ${APACHE_HOME}/htdocs || log_error "Nie udało się zmienić właściciela dla ${APACHE_HOME}/htdocs."
