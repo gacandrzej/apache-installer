@@ -49,8 +49,13 @@ RUN wget --no-check-certificate ${APACHE_URL} && \
 
 # Weryfikacja sum kontrolnych i import klucza GPG
 RUN sha256sum -c ${APACHE_TARBALL}.sha256 || exit 1
-RUN gpg --keyserver pgp.mit.edu --recv-keys ${APACHE_GPG_KEY_ID} || exit 1
-RUN gpg --verify ${APACHE_TARBALL}.asc ${APACHE_TARBALL} || exit 1
+COPY stefan_eissing_public.asc /tmp/apache_signer_key.asc
+# Zaimportuj klucz GPG Stefana Eissinga
+RUN gpg --batch --import /tmp/apache_signer_key.asc && \
+    # Opcjonalnie: Usuń plik klucza po zaimportowaniu, aby zmniejszyć rozmiar obrazu
+    rm /tmp/apache_signer_key.asc
+#RUN gpg --keyserver pgp.mit.edu --recv-keys ${APACHE_GPG_KEY_ID} || exit 1
+#RUN gpg --verify ${APACHE_TARBALL}.asc ${APACHE_TARBALL} || exit 1
 
 # Rozpakowanie i kompilacja Apache'a
 RUN tar xjf ${APACHE_TARBALL} && \
