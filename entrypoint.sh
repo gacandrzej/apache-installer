@@ -56,7 +56,10 @@ log_info "Uprawnienia woluminów danych ustawione pomyślnie."
 
 # Test konfiguracji Apache'a
 log_info "Testowanie konfiguracji Apache'a..."
-${APACHE_HOME}/bin/apachectl configtest || log_error "Błąd konfiguracji Apache'a. Sprawdź logi."
+# Uruchom configtest i przekieruj jego standardowe wyjście (stdout) i wyjście błędów (stderr)
+# do standardowego wyjścia skryptu, aby były widoczne w logach Dockera.
+# Jeśli apachectl configtest zwróci błąd, exit 1 spowoduje natychmiastowe zakończenie kontenera
+${APACHE_HOME}/bin/apachectl configtest 2>&1 || { echo "ERROR: Apache configtest failed! See above for details." && exit 1; }
 log_info "Konfiguracja Apache'a poprawna (Syntax OK)."
 
 # Upewnij się, że ServerName jest ustawiony w httpd.conf, aby uniknąć ostrzeżeń
