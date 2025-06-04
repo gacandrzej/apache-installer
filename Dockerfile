@@ -43,8 +43,8 @@ RUN groupadd ${APACHE_GROUP} && \
     useradd -r -s /bin/false -g ${APACHE_GROUP} ${APACHE_USER}
 
 # Pobieranie źródeł Apache
-RUN wget ${APACHE_URL} && \
-    wget ${APACHE_ASC_URL} && \
+RUN wget --no-check-certificate ${APACHE_URL} && \
+    wget --no-check-certificate ${APACHE_ASC_URL} && \
     curl -sO ${APACHE_SHA256_URL}
 
 # Weryfikacja sum kontrolnych i import klucza GPG
