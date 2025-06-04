@@ -3,7 +3,7 @@ name: Budowanie i Wdrażanie Obrazu Apache Docker
 on:
   push:
     branches:
-      - main # Uruchamia ten workflow automatycznie przy każdym pushu do gałęzi 'main'
+      - master # Uruchamia ten workflow automatycznie przy każdym pushu do gałęzi 'master'
   workflow_dispatch: # Dodaje opcję ręcznego uruchomienia workflow z interfejsu GitHub
 
 jobs:

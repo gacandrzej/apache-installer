@@ -8,10 +8,10 @@ ENV APACHE_GROUP apachegroup
 ENV APACHE_HOME /usr/local/apache2
 ENV APACHE_VERSION 2.4.63
 ENV APACHE_TARBALL httpd-${APACHE_VERSION}.tar.bz2
-ENV APACHE_URL https://dlcdn.apache.org/httpd/${APACHE_TARBALL}
-ENV APACHE_ASC_URL https://downloads.apache.org/httpd/${APACHE_VERSION}/${APACHE_TARBALL}.asc
-ENV APACHE_SHA256_URL https://downloads.apache.org/httpd/${APACHE_VERSION}/${APACHE_TARBALL}.sha256
-ENV APACHE_GPG_KEY_ID E33D83D62932EDEF
+ENV APACHE_URL https://downloads.apache.org/httpd/${APACHE_TARBALL} # Zmieniono domenę na downloads.apache.org
+ENV APACHE_ASC_URL https://downloads.apache.org/httpd/${APACHE_VERSION}/${APACHE_TARBALL}.asc # Upewnij się, że jest /${APACHE_VERSION}/
+ENV APACHE_SHA256_URL https://downloads.apache.org/httpd/${APACHE_VERSION}/${APACHE_TARBALL}.sha256 # Upewnij się, że jest /${APACHE_VERSION}/
+ENV APACHE_GPG_KEY_ID E33D83D62932EDEF # Ten klucz jest nadal poprawny dla 2.4.63
 ENV COMMON_NAME zsmeie
 
 # Ustawiamy katalog roboczy dla pobierania i kompilacji
