@@ -24,7 +24,10 @@ Zanim zaczniesz, upewnij się, że masz zainstalowane następujące narzędzia:
     
 
 2. Nadanie uprawnień:
-   chmod +x prepare_environment.sh
+    ```bash
+    chmod +x prepare_environment.sh
+    ```
+   
 3. Uruchom skrypt:
    ```bash
    sudo ./prepare_environment.sh
