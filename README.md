@@ -10,12 +10,16 @@ Zanim zaczniesz, upewnij się, że masz zainstalowane następujące narzędzia:
 - Docker: Silnik Docker, niezbędny do uruchamiania kontenerów.
 - Docker Compose: Narzędzie do definiowania i uruchamiania wielokontenerowych aplikacji Dockerowych.
 - OpenSSL: Będzie potrzebny do generowania certyfikatów SSL, jeśli install.sh nie może go użyć z kontenera. W środowisku GitHub Actions jest zwykle dostępny, ale lokalnie upewnij się, że masz go zainstalowanego (np. sudo apt install openssl na Ubuntu/Debian, lub zainstaluj z pakietów systemowych na innych OS-ach).
-1. Klonowanie repozytorium:
+1. Zaktualizuj listę repozytoriów i zainstaluj git:
+    ```bash
+   sudo apt update &&
+   sudo apt install git
+    ```
+2. Klonowanie repozytorium:
    
    ```bash
-   git clone https://github.com/gacandrzej/apache-installer.git
-   
-       cd apache-installer
+   git clone https://github.com/gacandrzej/apache-installer.git &&
+   cd apache-installer
    ```
     
 
@@ -33,7 +37,12 @@ Zanim zaczniesz, upewnij się, że masz zainstalowane następujące narzędzia:
    - Ustawia prawa wykonywania: Upewnia się, że plik install.sh ma nadane prawa wykonywania.
    - Instrukcje po zakończeniu: Wyświetla komunikaty informujące użytkownika o konieczności ponownego zalogowania (jeśli dodano go do grupy docker) oraz instrukcje dotyczące dalszego uruchamiania projektu. 
 
-5. Nadanie uprawnień do wykonania:
+5. Zbuduj obraz Dockera
+    ```bash
+    sudo docker build -t my-apache-ssl .
+    ```
+   
+6. Nadanie uprawnień do wykonania:
 ```bash
 chmod +x install.sh
 ``` 
