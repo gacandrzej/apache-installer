@@ -13,7 +13,7 @@ Zanim zaczniesz, upewnij się, że masz zainstalowane następujące narzędzia:
 1. Klonowanie repozytorium:
    
    ```bash
-   git clone https://github.com/gacandrze/apache-installer.git
+   git clone https://github.com/gacandrzej/apache-installer.git
    
        cd apache-installer
    ```
