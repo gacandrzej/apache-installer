@@ -116,5 +116,9 @@ chmod +x install.sh
    aby zmiany weszły w życie, bez długiej przebudowy obrazu.
    
 14. Trwałe logi: Logi Apache'a (access_log, error_log, ssl_request_log) są również montowane do ~/apache_data/logs, co oznacza, że są trwałe i łatwo dostępne z hosta.
-
+   - można też wyświetlić:
+```bash
+   sudo docker compose logs -f apache lub
+   sudo docker logs -f my-apache-container
+```
 15. KONIEC.

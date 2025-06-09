@@ -81,6 +81,8 @@ RUN tar xjf ${APACHE_TARBALL} && \
     make -j$(nproc) && \
     make install
 
+# omówienie z klasą 2k
+
 # Generowanie samodzielnie podpisanego certyfikatu SSL (zostaje w obrazie)
 #RUN openssl genrsa -out ${APACHE_HOME}/conf/ssl/server.key 2048 && \
 #    chmod 600 ${APACHE_HOME}/conf/ssl/server.key && \
